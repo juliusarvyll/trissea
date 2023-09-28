@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1024622577071",
+    "project_id": "trissea-99d16",
+    "storage_bucket": "trissea-99d16.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1024622577071:android:5189cc1f9ea37ae7a25b5a",
+        "android_client_info": {
+          "package_name": "com.spup.trissea"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBkPDrllkCmAl-GWZZhXnYSNNrpMVffSsQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
