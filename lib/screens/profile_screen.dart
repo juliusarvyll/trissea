@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:trissea/providers/user_provider.dart'; // Import UserProvider
 import 'package:trissea/screens/login_signup_screen.dart';
 import 'package:trissea/models/user_model.dart' as user;
+import 'package:trissea/screens/profile_screen_edit.dart';
 import 'trips_screen.dart'; // Import the TripsScreen widget
 
 class ProfileScreen extends StatelessWidget {
@@ -36,6 +37,13 @@ class _ProfileScreen extends StatelessWidget {
     FirebaseAuth.instance.signOut();
   }
 
+  void _editProfile(BuildContext context) {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (context) =>
+          ProfileEditScreen(), // Navigate to the edit profile screen
+    ));
+  }
+
   @override
   Widget build(BuildContext context) {
     final UserProvider userProvider = Provider.of<UserProvider>(
@@ -44,6 +52,8 @@ class _ProfileScreen extends StatelessWidget {
     );
 
     final user.User? loggedUser = userProvider.loggedUser;
+
+    final User? firebaseUser = FirebaseAuth.instance.currentUser;
     print('user: $loggedUser');
     return Scaffold(
       body: Center(
@@ -62,9 +72,12 @@ class _ProfileScreen extends StatelessWidget {
                   height: 20,
                 ),
                 Text(
-                  loggedUser?.passengerName ?? 'N/A',
+                  firebaseUser?.displayName ??
+                      'N/A', // Use Firebase user's displayName
                   style: const TextStyle(
-                      fontWeight: FontWeight.w900, fontSize: 26),
+                    fontWeight: FontWeight.w900,
+                    fontSize: 26,
+                  ),
                 ),
                 const SizedBox(
                   height: 10,
@@ -92,6 +105,12 @@ class _ProfileScreen extends StatelessWidget {
                 ),
                 const SizedBox(
                   height: 10,
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    _editProfile(context);
+                  },
+                  child: Text('Edit Profile'),
                 ),
                 ElevatedButton(
                   onPressed: () {

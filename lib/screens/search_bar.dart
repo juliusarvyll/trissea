@@ -87,6 +87,9 @@ class _SearchLocationWidgetState extends State<SearchLocationWidget> {
 
     moveCameraToSelectedPickUpLocation(context, placeId);
 
+    // Update the pickup search controller with the selected location
+    pickupSearchController.text = prediction.description ?? '';
+
     setState(() {
       showPickupResults = false;
     });
@@ -102,6 +105,9 @@ class _SearchLocationWidgetState extends State<SearchLocationWidget> {
     print('Selected destination location: $placeId');
 
     moveCameraToSelectedDestinationLocation(context, placeId);
+
+    // Update the destination search controller with the selected location
+    destinationSearchController.text = prediction.description ?? '';
 
     setState(() {
       showDestinationResults = false;
@@ -222,114 +228,124 @@ class _SearchLocationWidgetState extends State<SearchLocationWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.5),
-            spreadRadius: 2,
-            blurRadius: 7,
-            offset: const Offset(0, 3), // changes position of shadow
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 12),
-          Card(
-            elevation: 4,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(8),
-                topRight: Radius.circular(8),
-              ),
+    final mapProvider = context.read<MapProvider>();
+    print('mapAction: ${mapProvider.mapAction}');
+    return Visibility(
+      visible: true,
+      child: Positioned.fill(
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
             ),
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.search),
-                  title: Row(
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: pickupSearchController,
-                          onChanged: (value) {
-                            setState(() {
-                              showPickupResults = value.isNotEmpty;
-                            });
-                            pickupPlacesAutocomplete(value);
-                          },
-                          decoration: const InputDecoration(
-                            hintText: 'Pickup location',
-                            border: InputBorder.none,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.5),
+                spreadRadius: 2,
+                blurRadius: 7,
+                offset: const Offset(0, 3), // changes position of shadow
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 12),
+              Card(
+                elevation: 4,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(8),
+                    topRight: Radius.circular(8),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.search),
+                      title: Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: pickupSearchController,
+                              onChanged: (value) {
+                                setState(() {
+                                  showPickupResults = value.isNotEmpty;
+                                });
+                                pickupPlacesAutocomplete(value);
+                              },
+                              decoration: const InputDecoration(
+                                hintText: 'Pickup location',
+                                border: InputBorder.none,
+                              ),
+                            ),
                           ),
+                          IconButton(
+                            icon: const Icon(Icons.my_location),
+                            onPressed: () async {
+                              getDeviceLocation(context);
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Divider(),
+                    ListTile(
+                      leading: const Icon(Icons.location_on),
+                      title: TextFormField(
+                        controller: destinationSearchController,
+                        onChanged: (value) {
+                          setState(() {
+                            showDestinationResults = value.isNotEmpty;
+                          });
+                          destinationPlacesAutocomplete(value);
+                        },
+                        decoration: const InputDecoration(
+                          hintText: 'Destination location',
+                          border: InputBorder.none,
                         ),
                       ),
-                      IconButton(
-                        icon: Icon(Icons.my_location),
-                        onPressed: () async {
-                          getDeviceLocation(context);
-                        },
-                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              if (showPickupResults || showDestinationResults)
+                Card(
+                  elevation: 4,
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.zero,
+                      topRight: Radius.zero,
+                      bottomLeft: Radius.circular(8),
+                      bottomRight: Radius.circular(8),
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      if (showPickupResults)
+                        ...pickupPlacePredictions.map((prediction) {
+                          return LocationListTile(
+                            onLocationSelected: selectPickupLocation,
+                            prediction: prediction,
+                          );
+                        }),
+                      if (showDestinationResults)
+                        ...destinationPlacePredictions.map((prediction) {
+                          return LocationListTile(
+                            onLocationSelected: selectDestinationLocation,
+                            prediction: prediction,
+                          );
+                        }),
                     ],
                   ),
                 ),
-                const Divider(),
-                ListTile(
-                  leading: const Icon(Icons.location_on),
-                  title: TextFormField(
-                    controller: destinationSearchController,
-                    onChanged: (value) {
-                      setState(() {
-                        showDestinationResults = value.isNotEmpty;
-                      });
-                      destinationPlacesAutocomplete(value);
-                    },
-                    decoration: const InputDecoration(
-                      hintText: 'Destination location',
-                      border: InputBorder.none,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            ],
           ),
-          const SizedBox(height: 12),
-          if (showPickupResults || showDestinationResults)
-            Card(
-              elevation: 4,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.zero,
-                  topRight: Radius.zero,
-                  bottomLeft: Radius.circular(8),
-                  bottomRight: Radius.circular(8),
-                ),
-              ),
-              child: Column(
-                children: [
-                  if (showPickupResults)
-                    ...pickupPlacePredictions.map((prediction) {
-                      return LocationListTile(
-                        onLocationSelected: selectPickupLocation,
-                        prediction: prediction,
-                      );
-                    }),
-                  if (showDestinationResults)
-                    ...destinationPlacePredictions.map((prediction) {
-                      return LocationListTile(
-                        onLocationSelected: selectDestinationLocation,
-                        prediction: prediction,
-                      );
-                    }),
-                ],
-              ),
-            ),
-        ],
+        ),
       ),
     );
   }
