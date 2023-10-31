@@ -1,7 +1,7 @@
 class User {
   final String? id;
-  final String? passengerName;
-  final String? email;
+  String? passengerName;
+  String? email;
   final String? firstName;
   final String? lastName;
   final String? userType;
@@ -10,7 +10,7 @@ class User {
   final double? userLongitude;
   final double? heading;
 
-  const User({
+  User({
     this.id,
     this.passengerName,
     this.email,

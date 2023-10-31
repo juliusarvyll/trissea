@@ -240,8 +240,6 @@ class MapProvider with ChangeNotifier {
   void onTap(LatLng pos) async {
     if (mapAction == MapAction.selectTrip ||
         mapAction == MapAction.tripSelected) {
-      clearRoutes();
-
       changeMapAction(MapAction.tripSelected);
       addMarker(pos, _selectionPin!);
       notifyListeners();
@@ -458,6 +456,7 @@ class MapProvider with ChangeNotifier {
 
   void clearRoutes([bool shouldClearDistanceCost = true]) {
     _markers!.clear();
+    _markersPickup!.clear();
     _polylines!.clear();
     _remoteMarker = null;
     if (shouldClearDistanceCost) {
@@ -465,6 +464,12 @@ class MapProvider with ChangeNotifier {
       _cost = null;
     }
     clearRemoteAddress();
+    clearDeviceAddress();
+  }
+
+  void clearDeviceAddress() {
+    _deviceAddress = null;
+    _deviceLocation = null;
   }
 
   void clearRemoteAddress() {

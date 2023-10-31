@@ -36,13 +36,23 @@ class TripStarted extends StatelessWidget {
                 child: Column(
                   children: [
                     Center(
-                      child: Text(
-                        getTitleText(),
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center, // center the title text
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.directions_car, // Add an icon here (car icon)
+                            color: Colors.black,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            getTitleText(),
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -118,7 +128,7 @@ class TripStarted extends StatelessWidget {
           ),
         ],
       ),
-      textAlign: TextAlign.center, // center the info text
+      textAlign: TextAlign.center,
     );
   }
 

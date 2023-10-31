@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
+import 'package:trissea/models/map_action.dart';
 import 'package:trissea/providers/map_provider.dart';
 import 'package:lottie/lottie.dart';
 
@@ -114,20 +115,30 @@ class _MapScreenState extends State<MapScreen> {
                 ),
               ),
               Positioned(
-                bottom:
-                    0, // Place the combined widgets at the bottom of the screen
+                bottom: 0,
                 left: 0,
                 right: 0,
                 child: Column(
                   children: [
                     const SizedBox(
-                        height:
-                            10), // Add spacing between button and SearchLocationWidget
-                    const SearchLocationWidget(),
-                    ElevatedButton(
-                      onPressed: onButtonPressed,
-                      child: const Text('Button'),
+                      height: 10,
                     ),
+                    if (mapProvider.mapAction == MapAction.selectTrip)
+                      SearchLocationWidget(
+                        mapProvider: mapProvider,
+                      ),
+                    if (mapProvider.mapAction == MapAction.selectTrip)
+                      Container(
+                        color: Colors.white,
+                        width: double.infinity,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 30),
+                          child: ElevatedButton(
+                            onPressed: onButtonPressed,
+                            child: const Text('Select Location'),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),

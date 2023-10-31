@@ -108,59 +108,114 @@ class ConfirmPickup extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         if (mapProvider!.remoteAddress != null)
-                          Text(
-                            mapProvider!.remoteAddress!,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black,
-                            ),
+                          Row(
+                            children: [
+                              const Icon(
+                                  Icons.location_pin), // Add an icon here
+                              const SizedBox(
+                                  width:
+                                      8), // Add spacing between icon and text
+                              Expanded(
+                                child: Text(
+                                  mapProvider!.remoteAddress!,
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black,
+                                  ),
+                                  maxLines: 1, // Limit to 1 line
+                                  overflow: TextOverflow
+                                      .ellipsis, // Show ellipsis when overflowing
+                                ),
+                              ),
+                            ],
                           ),
                         const SizedBox(height: 8),
                         if (mapProvider!.distance != null)
-                          Text(
-                            'Distance: ${mapProvider!.distance!.toStringAsFixed(2)} km',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              color: Colors.black,
-                            ),
+                          Row(
+                            children: [
+                              const Icon(Icons.directions), // Add an icon here
+                              const SizedBox(
+                                  width:
+                                      8), // Add spacing between icon and text
+                              Text(
+                                'Distance: ${mapProvider!.distance!.toStringAsFixed(2)} km',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.black,
+                                ),
+                              ),
+                            ],
                           ),
                         if (mapProvider!.cost != null)
-                          Text(
-                            'Trip will cost: P${mapProvider!.cost!.toStringAsFixed(2)}',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              color: Colors.black,
-                            ),
+                          Row(
+                            children: [
+                              const Icon(Icons.money), // Add an icon here
+                              const SizedBox(
+                                  width:
+                                      8), // Add spacing between icon and text
+                              Text(
+                                'Trip will cost: P${mapProvider!.cost!.toStringAsFixed(2)}',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.black,
+                                ),
+                              ),
+                            ],
                           ),
                         FutureBuilder<String>(
                           future: getTravelTime(),
                           builder: (context, snapshot) {
                             if (snapshot.connectionState ==
                                 ConnectionState.waiting) {
-                              return const Text(
-                                'Travel Time: Calculating...',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.black,
-                                ),
+                              return Row(
+                                children: [
+                                  const Icon(
+                                      Icons.access_time), // Add an icon here
+                                  const SizedBox(
+                                      width:
+                                          8), // Add spacing between icon and text
+                                  const Text(
+                                    'Travel Time: Calculating...',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                ],
                               );
                             } else if (snapshot.hasError) {
-                              return Text(
-                                'Travel Time: Error calculating travel time: ${snapshot.error}',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.black,
-                                ),
+                              return Row(
+                                children: [
+                                  const Icon(Icons.error), // Add an icon here
+                                  const SizedBox(
+                                      width:
+                                          8), // Add spacing between icon and text
+                                  Text(
+                                    'Travel Time: Error calculating travel time: ${snapshot.error}',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                ],
                               );
                             } else {
                               final travelTime = snapshot.data;
-                              return Text(
-                                'Travel Time: $travelTime minutes',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.black,
-                                ),
+                              return Row(
+                                children: [
+                                  const Icon(Icons.timer), // Add an icon here
+                                  const SizedBox(
+                                      width:
+                                          8), // Add spacing between icon and text
+                                  Text(
+                                    'Travel Time: $travelTime minutes',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                ],
                               );
                             }
                           },
