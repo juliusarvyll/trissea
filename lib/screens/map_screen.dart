@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:trissea/models/map_action.dart';
 import 'package:trissea/providers/map_provider.dart';
 import 'package:lottie/lottie.dart';
+import 'package:trissea/widgets/map_screen_widgets/nearest_drivers.dart';
 
 import '../widgets/map_screen_widgets/confirm_pickup.dart';
 import '../widgets/map_screen_widgets/reached_destination.dart';
@@ -23,25 +24,20 @@ class MapScreen extends StatefulWidget {
 class _MapScreenState extends State<MapScreen> {
   CameraPosition? _cameraPosition;
   LatLng _draggedLatlng = const LatLng(0.0, 0.0);
-  bool pickup = false;
   bool destination = false;
   bool initialCameraLoad = true;
-  MapProvider? _mapProvider; // Declare a class-level variable
-  double showMap = 200; // Track whether to show or hide the map
+  MapProvider?
+      _mapProvider; // Declare a class-level variable // Track whether to show or hide the map
 
   // Getter methods for the variables
   CameraPosition? get cameraPosition => _cameraPosition;
   LatLng get draggedLatLng => _draggedLatlng;
-  bool get isPickup => pickup;
   bool get isDestination => destination;
   bool get isInitialCameraLoad => initialCameraLoad;
 
   // Create a function that you want to run when the button is pressed.
   void onButtonPressed() {
-    if (_mapProvider!.deviceLocation == null) {
-      // Call the mapProvider function to move the camera to the pickup location.
-      _mapProvider!.moveCameraToPickup(_draggedLatlng);
-    } else if (_mapProvider!.remoteLocation == null) {
+    if (_mapProvider!.remoteLocation == null) {
       _mapProvider!.onTap(_draggedLatlng);
     }
   }
@@ -87,7 +83,6 @@ class _MapScreenState extends State<MapScreen> {
                                   onCameraMove: updateMarkerPosition,
                                   markers: {
                                     ...mapProvider.markers!,
-                                    ...mapProvider.markersPickup!,
                                   },
                                   polylines: mapProvider.polylines!,
                                 )
@@ -105,9 +100,13 @@ class _MapScreenState extends State<MapScreen> {
                             ),
                           ),
                           ConfirmPickup(mapProvider: mapProvider),
+                          NearestDriver(mapProvider: mapProvider),
                           SearchDriver(mapProvider: mapProvider),
                           TripStarted(mapProvider: mapProvider),
                           ReachedDestination(mapProvider: mapProvider),
+                          SearchLocationWidget(
+                            mapProvider: mapProvider,
+                          ),
                         ],
                       ),
                     ),
@@ -123,10 +122,6 @@ class _MapScreenState extends State<MapScreen> {
                     const SizedBox(
                       height: 10,
                     ),
-                    if (mapProvider.mapAction == MapAction.selectTrip)
-                      SearchLocationWidget(
-                        mapProvider: mapProvider,
-                      ),
                     if (mapProvider.mapAction == MapAction.selectTrip)
                       Container(
                         color: Colors.white,

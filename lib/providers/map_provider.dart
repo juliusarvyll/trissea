@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:firebase_auth/firebase_auth.dart' hide User;
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 
@@ -16,53 +17,47 @@ import '../models/trip_model.dart';
 import '../models/user_model.dart';
 import '../services/database_service.dart';
 import '../services/location_service.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 class MapProvider with ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final LocationService _locationService = LocationService();
   final DatabaseService _dbService = DatabaseService();
-  GlobalKey<ScaffoldState>? _scaffoldKey;
-  GoogleMapController? _controller;
-  Set<Marker>? _markers;
-  Set<Marker>? _markersPickup;
-  MapAction? _mapAction;
-  Marker? _remoteMarker;
-  BitmapDescriptor? _selectionPin;
-  BitmapDescriptor? _carPin;
+  late GlobalKey<ScaffoldState>? _scaffoldKey;
+  late GoogleMapController? _controller;
+  late Set<Marker>? _markers;
+  late MapAction? _mapAction;
+  late Marker? _remoteMarker;
+  late BitmapDescriptor? _selectionPin;
+  late BitmapDescriptor? _carPin;
+  late Set<Polyline>? _polylines;
   BitmapDescriptor? _personPin;
-  Set<Polyline>? _polylines;
-  double? _cost;
-  String? _remoteAddress;
-  String? _deviceAddress;
-  String? _draggedAddress;
-  double? _distance;
-  LatLng? _draggedLatlng;
-  LatLng? _remoteLocation;
-  LatLng? _deviceLocation;
-  CameraPosition? _cameraPos;
-  Trip? _ongoingTrip;
-  Timer? _tripCancelTimer;
-  StreamSubscription<Trip>? _tripStream;
-  StreamSubscription<User>? _driverStream;
-  StreamSubscription<Position>? _positionStream;
+  late double? _cost;
+  late String? _remoteAddress;
+  late String? _deviceAddress;
+  late double? _distance;
+  late LatLng? _remoteLocation;
+  late Position? _deviceLocation;
+  late CameraPosition? _cameraPos;
+  late Trip? _ongoingTrip;
+  late Timer? _tripCancelTimer;
+  late StreamSubscription<Trip>? _tripStream;
+  late StreamSubscription<User>? _driverStream;
+  late StreamSubscription<Position>? _positionStream;
   bool _driverArrivingInit = false;
 
   GlobalKey<ScaffoldState>? get scaffoldKey => _scaffoldKey;
   CameraPosition? get cameraPos => _cameraPos;
   GoogleMapController? get controller => _controller;
   Set<Marker>? get markers => _markers;
-  Set<Marker>? get markersPickup => _markersPickup;
   Marker? get remoteMarker => _remoteMarker!;
   MapAction? get mapAction => _mapAction;
   BitmapDescriptor? get selectionPin => _selectionPin;
   BitmapDescriptor? get personPin => _personPin;
   BitmapDescriptor? get carPin => _carPin;
-  LatLng? get draggedLatlng => _draggedLatlng;
-  LatLng? get deviceLocation => _deviceLocation;
+  Position? get deviceLocation => _deviceLocation;
   LatLng? get remoteLocation => _remoteLocation;
   String? get remoteAddress => _remoteAddress;
   String? get deviceAddress => _deviceAddress;
-  String? get draggedAddress => _draggedAddress;
   Set<Polyline>? get polylines => _polylines;
   double? get cost => _cost;
   double? get distance => _distance;
@@ -78,14 +73,11 @@ class MapProvider with ChangeNotifier {
     _deviceLocation = null;
     _remoteLocation = null;
     _remoteAddress = null;
-    _draggedLatlng = null;
-    _draggedAddress = null;
     _deviceAddress = null;
     _cost = null;
     _distance = null;
     _cameraPos = null;
     _markers = {};
-    _markersPickup = {};
     _polylines = {};
     _ongoingTrip = null;
     _tripCancelTimer = null;
@@ -93,11 +85,21 @@ class MapProvider with ChangeNotifier {
     _driverStream = null;
     _positionStream = null;
     setCustomPin();
+
+    if (kDebugMode) {
+      print('=====///=============///=====');
+      print('Map provider loaded');
+      print('///==========///==========///');
+    }
+  }
+
+  void setScaffoldKey(GlobalKey<ScaffoldState> scaffoldKey) {
+    _scaffoldKey = scaffoldKey;
   }
 
   Future<void> setCustomPin() async {
     _selectionPin = await BitmapDescriptor.fromAssetImage(
-      const ImageConfiguration(devicePixelRatio: 1, size: Size(20, 20)),
+      const ImageConfiguration(devicePixelRatio: 2.5),
       'images/pin.png',
     );
     _carPin = await BitmapDescriptor.fromAssetImage(
@@ -113,12 +115,12 @@ class MapProvider with ChangeNotifier {
   }
 
   Future<void> initializeMap({GlobalKey<ScaffoldState>? scaffoldKey}) async {
+    Position? deviceLocation;
     LatLng? cameraLatLng;
 
-    // Request location permission
-    final status = await Permission.location.request();
+    setScaffoldKey(scaffoldKey!);
 
-    if (status.isPermanentlyDenied) {
+    if (await _locationService.checkLocationIfPermanentlyDisabled()) {
       showDialog(
         context: _scaffoldKey!.currentContext!,
         builder: (BuildContext context) {
@@ -128,99 +130,75 @@ class MapProvider with ChangeNotifier {
             ),
             actions: [
               TextButton(
-                onPressed: () => openAppSettings(),
+                onPressed: () => Geolocator.openAppSettings(),
                 child: const Text('Open App Settings'),
               ),
             ],
           );
         },
       );
-    } else if (status.isDenied) {
-      // Handle the case when the user denied location permission
-      // You can show a message or take appropriate action here.
-    } else if (status.isGranted) {
-      // Location permission granted, proceed with your map initialization
-      cameraLatLng = const LatLng(17.6168, 121.7230);
-      setCameraPosition(cameraLatLng);
-      notifyListeners();
-    }
-  }
+    } else {
+      if (await _locationService.checkLocationPermission()) {
+        try {
+          deviceLocation = await _locationService.getLocation();
+          cameraLatLng = LatLng(
+            deviceLocation.latitude,
+            deviceLocation.longitude,
+          );
+          setDeviceLocation(deviceLocation);
+          setDeviceLocationAddress(
+            deviceLocation.latitude,
+            deviceLocation.longitude,
+          );
 
-  Future<void> _getAddress(LatLng position) async {
-    //this will list down all address around the position
-    List<Placemark> placemarks =
-        await placemarkFromCoordinates(position.latitude, position.longitude);
-    Placemark address = placemarks[0]; // get only first and closest address
-    String addresStr =
-        "${address.street}, ${address.locality}, ${address.administrativeArea}, ${address.country}";
-    _draggedAddress = addresStr;
+          if (_positionStream != null) {
+            _positionStream!.cancel();
+            _positionStream = null;
+          }
+          listenToPositionStream();
+        } catch (error) {
+          if (kDebugMode) {
+            print('=====///=============///=====');
+            print('Unable to get device location');
+            print('///==========///==========///');
+          }
+        }
+      }
+    }
+
+    if (deviceLocation == null) {
+      cameraLatLng = const LatLng(37.42227936982647, -122.08611108362673);
+    }
+
+    setCameraPosition(cameraLatLng!);
+
     notifyListeners();
   }
 
-  void setPickupLocation(double latitude, double longitude) {
-    _deviceLocation = LatLng(latitude, longitude);
+  void setDeviceLocation(Position location) {
+    _deviceLocation = location;
   }
 
-  Future<void> setDeviceLocationAddress(
-      double latitude, double longitude) async {
-    try {
-      List<Placemark> placemarks =
-          await placemarkFromCoordinates(latitude, longitude);
-      if (placemarks.isNotEmpty) {
-        Placemark place = placemarks[0];
-        String address =
-            "${place.name}, ${place.street}, ${place.subLocality}, ${place.locality}, ${place.administrativeArea}, ${place.country}";
-        _deviceAddress = address;
-        print(_deviceAddress);
-        notifyListeners();
-      } else {
-        print("No address found for the given coordinates.");
+  void setDeviceLocationAddress(double latitude, double longitude) {
+    placemarkFromCoordinates(latitude, longitude)
+        .then((List<Placemark> places) {
+      _deviceAddress = places[2].name;
+
+      if (kDebugMode) {
+        print(places[2].toString());
       }
-    } catch (e) {
-      print("Error: $e");
-    }
+    });
+    FirebaseFirestore.instance
+        .collection('passengers')
+        .doc(FirebaseAuth.instance.currentUser!.uid)
+        .update({
+      'passengerLatitude': latitude,
+      'passengerLongitude': longitude,
+    });
   }
 
   void onMapCreated(GoogleMapController controller) {
     _controller = controller;
-  }
-
-  void moveCameraToDestination(
-    LatLng latLng,
-  ) {
-    animateCameraToPos(
-      LatLng(latLng.latitude, latLng.longitude),
-      15,
-    );
-    print('Latitude: ${latLng.latitude}');
-    print('Longitude: ${latLng.longitude}');
-
-    onTap(latLng);
-  }
-
-  void useDeviceLocation(double latitude, double longitude) {
-    setPickupLocation(latitude, longitude);
-  }
-
-  void moveCameraToPickup(LatLng latLng) async {
-    _markersPickup!.clear();
-    print('Latitude: ${latLng.latitude}');
-    print('Longitude: ${latLng.longitude}');
-
-    // Use the custom BitmapDescriptor for the pickup marker
-    final customPin = _personPin!; // Replace with the appropriate custom pin
-
-    // Add the marker to the map using the MapProvider's addMarker function
-    addMarkerPickup(
-      latLng,
-      customPin,
-    );
-
-    // Set the device location to the pickup location's LatLng
-    setPickupLocation(latLng.latitude, latLng.longitude);
-
-    // Set the device location address
-    await setDeviceLocationAddress(latLng.latitude, latLng.longitude);
   }
 
   void setCameraPosition(LatLng latLng, {double zoom = 15}) {
@@ -230,16 +208,16 @@ class MapProvider with ChangeNotifier {
     );
   }
 
-  void pickupLocation(LatLng pos) async {
-    if (mapAction == MapAction.selectTrip ||
-        mapAction == MapAction.tripSelected) {
-      addMarkerPickup(pos, _personPin!);
-    }
-  }
-
   void onTap(LatLng pos) async {
     if (mapAction == MapAction.selectTrip ||
         mapAction == MapAction.tripSelected) {
+      clearRoutes();
+
+      if (kDebugMode) {
+        print(pos.latitude);
+        print(pos.longitude);
+      }
+
       changeMapAction(MapAction.tripSelected);
       addMarker(pos, _selectionPin!);
       notifyListeners();
@@ -261,6 +239,11 @@ class MapProvider with ChangeNotifier {
   void listenToPositionStream() {
     _positionStream = LocationService().getRealtimeDeviceLocation().listen(
       (Position pos) {
+        if (kDebugMode) {
+          print(pos.toString());
+        }
+
+        setDeviceLocation(pos);
         setDeviceLocationAddress(
           pos.latitude,
           pos.longitude,
@@ -279,33 +262,6 @@ class MapProvider with ChangeNotifier {
     _positionStream = null;
   }
 
-  void addMarkerPickup(
-    LatLng latLng,
-    BitmapDescriptor pin, {
-    bool isDraggable = true,
-    double? heading,
-  }) {
-    final String markerId = const Uuid().v4();
-    final Marker newMarker = Marker(
-      markerId: MarkerId(markerId),
-      position: latLng,
-      draggable: isDraggable,
-      onDrag: (v) {},
-      onDragStart: (v) {},
-      onDragEnd: (LatLng newPos) async {
-        await updateMarkerPos(newPos);
-      },
-      rotation: heading ?? 0.0,
-      icon: pin,
-      zIndex: 3,
-    );
-
-    _markersPickup!.add(newMarker);
-    _remoteMarker = newMarker;
-  }
-
-  // Other functions with null safety checks and error handling...
-
   void addMarker(
     LatLng latLng,
     BitmapDescriptor pin, {
@@ -317,9 +273,23 @@ class MapProvider with ChangeNotifier {
       markerId: MarkerId(markerId),
       position: latLng,
       draggable: isDraggable,
-      onDrag: (v) {},
-      onDragStart: (v) {},
+      onDrag: (v) {
+        if (kDebugMode) {
+          print('========Drag====');
+          print(v.toString());
+        }
+      },
+      onDragStart: (v) {
+        if (kDebugMode) {
+          print('========Drag Start====');
+          print(v.toString());
+        }
+      },
       onDragEnd: (LatLng newPos) async {
+        if (kDebugMode) {
+          print('========Drag end====');
+          print(newPos.toString());
+        }
         await updateMarkerPos(newPos);
       },
       rotation: heading ?? 0.0,
@@ -363,9 +333,7 @@ class MapProvider with ChangeNotifier {
     _markers!.add(_remoteMarker!);
   }
 
-  Future<PolylineResult> setPolyline(
-    LatLng remotePoint,
-  ) async {
+  Future<PolylineResult> setPolyline(LatLng remotePoint) async {
     _polylines!.clear();
 
     PolylineResult result = await PolylinePoints().getRouteBetweenCoordinates(
@@ -374,13 +342,17 @@ class MapProvider with ChangeNotifier {
       PointLatLng(_deviceLocation!.latitude, _deviceLocation!.longitude),
     );
 
+    if (kDebugMode) {
+      print(result.points);
+    }
+
     if (result.points.isNotEmpty) {
       final String polylineId = const Uuid().v4();
 
       _polylines!.add(
         Polyline(
           polylineId: PolylineId(polylineId),
-          color: Colors.black,
+          color: Colors.black87,
           points: result.points
               .map((PointLatLng point) =>
                   LatLng(point.latitude, point.longitude))
@@ -408,30 +380,10 @@ class MapProvider with ChangeNotifier {
       pos.latitude,
       pos.longitude,
     );
+    _remoteAddress = places[2].name;
 
-    if (places.isNotEmpty) {
-      Placemark firstPlace = places.first;
-      String address = firstPlace.thoroughfare ?? '';
-      if (firstPlace.subThoroughfare != null) {
-        address = '${firstPlace.subThoroughfare}, $address';
-      }
-      if (firstPlace.locality != null) {
-        address = '$address, ${firstPlace.locality}';
-      }
-      if (firstPlace.administrativeArea != null) {
-        address = '$address, ${firstPlace.administrativeArea}';
-      }
-      if (firstPlace.postalCode != null) {
-        address = '$address ${firstPlace.postalCode}';
-      }
-      if (firstPlace.country != null) {
-        address = '$address, ${firstPlace.country}';
-      }
-
-      _remoteAddress = address;
-      print(_remoteLocation);
-    } else {
-      _remoteAddress = "Address not found";
+    if (kDebugMode) {
+      print(places[2].toString());
     }
   }
 
@@ -451,12 +403,17 @@ class MapProvider with ChangeNotifier {
   }
 
   void calculateCost() {
-    _cost = _distance! * 50;
+    _cost = _distance! * 0.75;
   }
 
   void clearRoutes([bool shouldClearDistanceCost = true]) {
+    if (kDebugMode) {
+      print(
+        '======== Clear routes (markers, polylines, destination data, etc....) ========',
+      );
+    }
+
     _markers!.clear();
-    _markersPickup!.clear();
     _polylines!.clear();
     _remoteMarker = null;
     if (shouldClearDistanceCost) {
@@ -464,12 +421,6 @@ class MapProvider with ChangeNotifier {
       _cost = null;
     }
     clearRemoteAddress();
-    clearDeviceAddress();
-  }
-
-  void clearDeviceAddress() {
-    _deviceAddress = null;
-    _deviceLocation = null;
   }
 
   void clearRemoteAddress() {
@@ -485,6 +436,12 @@ class MapProvider with ChangeNotifier {
     _mapAction = mapAction;
   }
 
+  void changeMapActiontoSelectTrip() {
+    changeMapAction(MapAction.selectTrip);
+    notifyListeners();
+    print('mapAction: $mapAction');
+  }
+
   void setOngoingTrip(Trip trip) {
     _ongoingTrip = trip;
   }
@@ -492,6 +449,10 @@ class MapProvider with ChangeNotifier {
   void startListeningToDriver() {
     _driverStream = _dbService.getDriver$(_ongoingTrip!.driverId!).listen(
       (User driver) async {
+        if (kDebugMode) {
+          print(driver.toMap());
+        }
+
         if (driver.userLatitude != null && driver.userLongitude != null) {
           if (mapAction == MapAction.driverArriving && !_driverArrivingInit) {
             animateCameraToBounds(
@@ -528,23 +489,6 @@ class MapProvider with ChangeNotifier {
     );
   }
 
-  Stream<String> getDriverNameById$() {
-    return _firestore
-        .collection('drivers')
-        .doc(_ongoingTrip!.driverId!)
-        .snapshots()
-        .map((DocumentSnapshot snapshot) {
-      if (snapshot.exists) {
-        final driverData = snapshot.data() as Map<String, dynamic>;
-        final driverName = driverData['driverName'] as String;
-        return driverName;
-      } else {
-        // Handle the case where no driver with the specified ID is found
-        throw Exception('Driver not found');
-      }
-    });
-  }
-
   void stopListeningToDriver() {
     _driverStream!.cancel();
     _driverStream = null;
@@ -554,6 +498,7 @@ class MapProvider with ChangeNotifier {
     changeMapAction(MapAction.driverArriving);
     stopAutoCancelTimer();
     startListeningToDriver();
+    _distance = null;
 
     notifyListeners();
   }
@@ -562,6 +507,7 @@ class MapProvider with ChangeNotifier {
     changeMapAction(MapAction.driverArrived);
     stopListeningToDriver();
     _polylines!.clear();
+    _distance = null;
 
     notifyListeners();
 
@@ -642,7 +588,11 @@ class MapProvider with ChangeNotifier {
     }
 
     _tripStream = _dbService.getTrip$(_ongoingTrip!).listen((Trip trip) {
-      if (kDebugMode) {}
+      if (kDebugMode) {
+        print('========///========///========');
+        print(trip.toMap());
+        print('====///====///====///====///====');
+      }
       setOngoingTrip(trip);
 
       if (trip.tripCompleted != null && trip.tripCompleted!) {
@@ -661,6 +611,10 @@ class MapProvider with ChangeNotifier {
 
   void stopListeningToTrip() {
     if (_tripStream != null) {
+      if (kDebugMode) {
+        print('======== Stop litening to trip stream ========');
+      }
+
       _tripStream!.cancel();
       _tripStream = null;
     }
@@ -677,7 +631,7 @@ class MapProvider with ChangeNotifier {
     }
 
     _tripCancelTimer = Timer(
-      const Duration(seconds: 60),
+      const Duration(seconds: 100),
       () {
         tripDeleteHandler!();
         cancelTrip();
@@ -708,9 +662,6 @@ class MapProvider with ChangeNotifier {
 
   void cancelTrip() {
     resetMapAction();
-    _markersPickup!.clear;
-    _markers!.clear;
-
     clearRoutes();
     _ongoingTrip = null;
     _driverArrivingInit = false;
@@ -756,5 +707,22 @@ class MapProvider with ChangeNotifier {
 
   void animateCameraToPos(LatLng pos, [double zoom = 15]) {
     _controller!.animateCamera(CameraUpdate.newLatLngZoom(pos, zoom));
+  }
+
+  Stream<String> getDriverNameById$() {
+    return _firestore
+        .collection('drivers')
+        .doc(_ongoingTrip!.driverId!)
+        .snapshots()
+        .map((DocumentSnapshot snapshot) {
+      if (snapshot.exists) {
+        final driverData = snapshot.data() as Map<String, dynamic>;
+        final driverName = driverData['driverName'] as String;
+        return driverName;
+      } else {
+        // Handle the case where no driver with the specified ID is found
+        throw Exception('Driver not found');
+      }
+    });
   }
 }

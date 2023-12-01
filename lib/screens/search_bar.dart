@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:trissea/constant.dart';
 import 'package:trissea/models/autocomplate_prediction.dart';
+import 'package:trissea/models/map_action.dart';
 import 'package:trissea/models/place_auto_complate_response.dart';
 import 'package:trissea/models/placedetails.dart';
 import 'package:trissea/providers/map_provider.dart';
@@ -10,7 +11,6 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
-import 'package:geolocator/geolocator.dart';
 
 class SearchLocationWidget extends StatefulWidget {
   const SearchLocationWidget({Key? key, this.mapProvider}) : super(key: key);
@@ -205,34 +205,14 @@ class _SearchLocationWidgetState extends State<SearchLocationWidget> {
     }
   }
 
-  Future<void> getDeviceLocation(BuildContext context) async {
-    final mapProvider = context.read<MapProvider>();
-    try {
-      Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.best,
-      );
-
-      double latitude = position.latitude;
-      double longitude = position.longitude;
-      print("$latitude, $longitude");
-      mapProvider.moveCameraToPickup(
-        LatLng(latitude, longitude),
-      );
-    } catch (e) {
-      print("Error getting device location: $e");
-
-      // Throw an exception with a custom error message
-      throw Exception("Failed to retrieve device location");
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final mapProvider = context.read<MapProvider>();
     print('mapAction: ${mapProvider.mapAction}');
     return Visibility(
-      visible: true,
+      visible: mapProvider.mapAction == MapAction.selectTrip,
       child: Positioned.fill(
+        top: 450,
         child: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
@@ -264,34 +244,6 @@ class _SearchLocationWidgetState extends State<SearchLocationWidget> {
                 ),
                 child: Column(
                   children: [
-                    ListTile(
-                      leading: const Icon(Icons.search),
-                      title: Row(
-                        children: [
-                          Expanded(
-                            child: TextFormField(
-                              controller: pickupSearchController,
-                              onChanged: (value) {
-                                setState(() {
-                                  showPickupResults = value.isNotEmpty;
-                                });
-                                pickupPlacesAutocomplete(value);
-                              },
-                              decoration: const InputDecoration(
-                                hintText: 'Pickup location',
-                                border: InputBorder.none,
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.my_location),
-                            onPressed: () async {
-                              getDeviceLocation(context);
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
                     const Divider(),
                     ListTile(
                       leading: const Icon(Icons.location_on),

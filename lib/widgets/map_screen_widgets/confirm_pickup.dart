@@ -1,13 +1,9 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:trissea/constant.dart';
 import 'package:trissea/models/map_action.dart';
-import 'package:trissea/models/trip_model.dart';
 import 'package:trissea/providers/map_provider.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-
-import '../../services/database_service.dart';
 
 class ConfirmPickup extends StatelessWidget {
   const ConfirmPickup({Key? key, this.mapProvider}) : super(key: key);
@@ -44,41 +40,6 @@ class ConfirmPickup extends StatelessWidget {
     }
 
     throw Exception('Failed to calculate travel time ${response.body}');
-  }
-
-  Future<void> _startTrip(BuildContext context) async {
-    final DatabaseService dbService = DatabaseService();
-
-    Trip newTrip = Trip(
-      pickupAddress: mapProvider!.deviceAddress,
-      destinationAddress: mapProvider!.remoteAddress,
-      pickupLatitude: mapProvider!.deviceLocation!.latitude,
-      pickupLongitude: mapProvider!.deviceLocation!.longitude,
-      destinationLatitude: mapProvider!.remoteLocation!.latitude,
-      destinationLongitude: mapProvider!.remoteLocation!.longitude,
-      distance: mapProvider!.distance,
-      cost: mapProvider!.cost,
-      passengerId: FirebaseAuth.instance.currentUser!.uid,
-      passengerName: FirebaseAuth.instance.currentUser!.displayName,
-    );
-
-    String tripId = await dbService.startTrip(newTrip);
-    newTrip.id = tripId;
-    mapProvider!.confirmTrip(newTrip);
-
-    mapProvider!.triggerAutoCancelTrip(
-      tripDeleteHandler: () {
-        newTrip.canceled = true;
-        dbService.updateTrip(newTrip);
-      },
-      snackbarHandler: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Trip is not accepted by any driver'),
-          ),
-        );
-      },
-    );
   }
 
   Future<String> getTravelTime() async {
@@ -234,7 +195,7 @@ class ConfirmPickup extends StatelessWidget {
                             Colors.black, // Use your desired color here
                         padding: const EdgeInsets.all(15),
                       ),
-                      onPressed: () => _startTrip(context),
+                      onPressed: () => {},
                       child: const Text(
                         'CONFIRM',
                         style: TextStyle(

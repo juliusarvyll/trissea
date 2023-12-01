@@ -6,6 +6,8 @@ import 'package:trissea/providers/user_provider.dart';
 class ProfileEditScreen extends StatefulWidget {
   static const String route = '/profile_edit';
 
+  const ProfileEditScreen({super.key});
+
   @override
   _ProfileEditScreenState createState() => _ProfileEditScreenState();
 }
