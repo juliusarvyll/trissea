@@ -1,13 +1,12 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
+import 'package:trissea/screens/home_screen.dart';
+import 'package:trissea/screens/profile_screen.dart';
 import '../models/user_model.dart' as user;
 import '../providers/map_provider.dart';
 import '../providers/user_provider.dart';
 import '../screens/login_signup_screen.dart';
-import '../screens/map_screen.dart';
-import '../screens/trips_screen.dart';
 
 class CustomSideDrawer extends StatelessWidget {
   const CustomSideDrawer({Key? key}) : super(key: key);
@@ -27,48 +26,49 @@ class CustomSideDrawer extends StatelessWidget {
     return Drawer(
       child: Column(
         children: [
-          loggedUser != null
-              ? UserAccountsDrawerHeader(
-                  decoration: const BoxDecoration(
-                    color: Colors.black,
-                  ),
-                  currentAccountPicture: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.grey[50],
-                      shape: BoxShape.circle,
+          GestureDetector(
+            onTap: () {
+              if (loggedUser != null) {
+                Navigator.of(context).pushNamed(ProfileScreen.route);
+              }
+            },
+            child: loggedUser != null
+                ? UserAccountsDrawerHeader(
+                    decoration: const BoxDecoration(
+                      color: Colors.black,
                     ),
-                    child: const Icon(
-                      Icons.person,
-                      size: 50,
-                      color: Colors.black45,
+                    currentAccountPicture: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey[50],
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.person,
+                        size: 50,
+                        color: Colors.black45,
+                      ),
+                    ),
+                    accountName: Text(FirebaseAuth.instance.currentUser!.displayName.toString()),
+                    accountEmail: Text(loggedUser.email!),
+                  )
+                : Container(
+                    height: 200,
+                    color: Theme.of(context).primaryColor,
+                    child: const Center(
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                      ),
                     ),
                   ),
-                  accountName: Text(loggedUser.passengerName!),
-                  accountEmail: Text(loggedUser.email!),
-                )
-              : Container(
-                  height: 200,
-                  color: Theme.of(context).primaryColor,
-                  child: const Center(
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
+          ),
           const SizedBox(height: 10),
           _buildButtonTile(
             context: context,
             title: 'Home',
             icon: Icons.home_rounded,
             onTap: () => Navigator.of(context).pushNamed(
-              MapScreen.route,
+              TrisseaHomeScreen.route,
             ),
-          ),
-          _buildButtonTile(
-            context: context,
-            title: 'Trips',
-            icon: Icons.navigation_rounded,
-            onTap: () => Navigator.of(context).pushNamed(TripsScreen.route),
           ),
           _buildButtonTile(
             context: context,

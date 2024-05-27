@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:trissea/widgets/custom_side_drawer.dart';
 import '../models/trip_model.dart';
 import '../services/database_service.dart';
 
@@ -10,6 +11,7 @@ class TripsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      drawer: const CustomSideDrawer(),
       body: FutureBuilder(
         future: DatabaseService().getCompletedTrips(),
         builder: (BuildContext context, AsyncSnapshot<List<Trip>> snapshot) {

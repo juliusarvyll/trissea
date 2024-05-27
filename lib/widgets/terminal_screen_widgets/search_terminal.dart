@@ -7,10 +7,11 @@ import '../../models/trip_model.dart';
 import '../../providers/map_provider.dart';
 import '../../services/database_service.dart';
 
-class SearchDriver extends StatelessWidget {
-  const SearchDriver({
+class SearchTerminal extends StatelessWidget {
+  const SearchTerminal({
     Key? key,
     required this.mapProvider,
+    
   }) : super(key: key);
 
   final MapProvider mapProvider;
@@ -27,7 +28,7 @@ class SearchDriver extends StatelessWidget {
   Widget build(BuildContext context) {
     Size screenSize = MediaQuery.of(context).size;
     return Visibility(
-      visible: mapProvider.mapAction == MapAction.searchDriver,
+      visible: mapProvider.mapAction == MapAction.searchTerminal,
       child: Positioned.fill(
         top: screenSize.height * 0.80,
         child: Container(

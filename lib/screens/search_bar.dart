@@ -1,302 +1,105 @@
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:google_places_flutter/google_places_flutter.dart';
+import 'package:google_places_flutter/model/prediction.dart';
 import 'package:trissea/constant.dart';
 import 'package:trissea/models/autocomplate_prediction.dart';
 import 'package:trissea/models/map_action.dart';
-import 'package:trissea/models/place_auto_complate_response.dart';
-import 'package:trissea/models/placedetails.dart';
 import 'package:trissea/providers/map_provider.dart';
-import 'package:trissea/services/search_request.dart';
-import 'package:trissea/widgets/map_screen_widgets/location_list_tile.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
+import 'package:ionicons/ionicons.dart';
 
 class SearchLocationWidget extends StatefulWidget {
   const SearchLocationWidget({Key? key, this.mapProvider}) : super(key: key);
 
   final MapProvider? mapProvider;
+  static const String route = '/search';
 
   @override
   State<SearchLocationWidget> createState() => _SearchLocationWidgetState();
 }
 
 class _SearchLocationWidgetState extends State<SearchLocationWidget> {
-  TextEditingController pickupSearchController = TextEditingController();
   TextEditingController destinationSearchController = TextEditingController();
-  List<AutocompletePrediction> pickupPlacePredictions = [];
   List<AutocompletePrediction> destinationPlacePredictions = [];
-  bool showPickupResults = false;
-  bool showDestinationResults = false;
-  double containerHeight = 400;
 
-  void pickupPlacesAutocomplete(String query) async {
-    Uri uri =
-        Uri.https("maps.googleapis.com", 'maps/api/place/autocomplete/json', {
-      "input": query,
-      "key": googleMapApi,
-      "components": 'country:ph',
-    });
-    String? response = await requestSearch.fetchUrl(uri);
-
-    if (response != null) {
-      Map<String, dynamic> responseData = json.decode(response);
-      PlaceAutocompleteResponse result =
-          PlaceAutocompleteResponse.fromJson(responseData);
-
-      if (result.predictions != null) {
-        setState(() {
-          pickupPlacePredictions = result.predictions!;
-          showPickupResults = true;
-        });
-      }
-    }
+  void moveCameraToSelectedLocation(LatLng pos) {
+    widget.mapProvider!.animateCameraToPos(pos);
   }
-
-  void destinationPlacesAutocomplete(String query) async {
-    Uri uri =
-        Uri.https("maps.googleapis.com", 'maps/api/place/autocomplete/json', {
-      "input": query,
-      "key": googleMapApi,
-      "components": 'country:ph',
-    });
-    String? response = await requestSearch.fetchUrl(uri);
-
-    if (response != null) {
-      Map<String, dynamic> responseData = json.decode(response);
-      PlaceAutocompleteResponse result =
-          PlaceAutocompleteResponse.fromJson(responseData);
-
-      if (result.predictions != null) {
-        setState(() {
-          destinationPlacePredictions = result.predictions!;
-          showDestinationResults = true;
-        });
-      }
-    }
-  }
-
-  void selectPickupLocation(AutocompletePrediction prediction) {
-    String placeId = prediction.placeId!;
-
-    if (placeId.isEmpty) {
-      print('Selected pickup location is empty');
-      return;
-    }
-    print('Selected pickup location: $placeId');
-
-    moveCameraToSelectedPickUpLocation(context, placeId);
-
-    // Update the pickup search controller with the selected location
-    pickupSearchController.text = prediction.description ?? '';
-
-    setState(() {
-      showPickupResults = false;
-    });
-  }
-
-  void selectDestinationLocation(AutocompletePrediction prediction) {
-    String placeId = prediction.placeId!;
-
-    if (placeId.isEmpty) {
-      print('Selected destination location is empty');
-      return;
-    }
-    print('Selected destination location: $placeId');
-
-    moveCameraToSelectedDestinationLocation(context, placeId);
-
-    // Update the destination search controller with the selected location
-    destinationSearchController.text = prediction.description ?? '';
-
-    setState(() {
-      showDestinationResults = false;
-    });
-  }
-
-  Future<void> moveCameraToSelectedPickUpLocation(
-      BuildContext context, String location) async {
-    final mapProvider = context.read<MapProvider>();
-    final Uri uri = Uri.https(
-      'maps.googleapis.com',
-      '/maps/api/place/details/json',
-      {
-        'place_id': location,
-        'key': googleMapApi,
-      },
-    );
-
-    try {
-      final http.Response response = await http.get(uri);
-
-      if (response.statusCode == 200) {
-        print('Response status: ${response.statusCode}');
-        print('Response body: ${response.body}');
-        final Map<String, dynamic> responseData = json.decode(response.body);
-        final PlaceDetailsResponse result =
-            PlaceDetailsResponse.fromJson(responseData);
-
-        if (result.status == 'OK' && result.result != null) {
-          final double searchLatitude =
-              result.result!.geometry?.location?.lat ?? 0.0;
-          final double searchLongitude =
-              result.result!.geometry?.location?.lng ?? 0.0;
-
-          print(
-              'Selected Location - Latitude: $searchLatitude, Longitude: $searchLongitude');
-
-          print('Moving camera to the selected pickup location');
-          mapProvider
-              .animateCameraToPos(LatLng(searchLatitude, searchLongitude));
-        } else {
-          print('Invalid response status or result is null');
-        }
-      } else {
-        print('Error: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('Exception occurred: $e');
-    }
-  }
-
-  Future<void> moveCameraToSelectedDestinationLocation(
-      BuildContext context, String location) async {
-    final mapProvider = context.read<MapProvider>();
-    final Uri uri = Uri.https(
-      'maps.googleapis.com',
-      '/maps/api/place/details/json',
-      {
-        'place_id': location,
-        'key': googleMapApi,
-      },
-    );
-
-    try {
-      final http.Response response = await http.get(uri);
-
-      if (response.statusCode == 200) {
-        print('Response status: ${response.statusCode}');
-        print('Response body: ${response.body}');
-        final Map<String, dynamic> responseData = json.decode(response.body);
-        final PlaceDetailsResponse result =
-            PlaceDetailsResponse.fromJson(responseData);
-
-        if (result.status == 'OK' && result.result != null) {
-          final double searchLatitude =
-              result.result!.geometry?.location?.lat ?? 0.0;
-          final double searchLongitude =
-              result.result!.geometry?.location?.lng ?? 0.0;
-
-          print(
-              'Selected Location - Latitude: $searchLatitude, Longitude: $searchLongitude');
-
-          print('Moving camera to the selected location');
-
-          mapProvider
-              .animateCameraToPos(LatLng(searchLatitude, searchLongitude));
-        } else {
-          print('Invalid response status or result is null');
-        }
-      } else {
-        print('Error: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('Exception occurred: $e');
-    }
-  }
+  Future<double> parseDouble(String? input) async {
+  // Parse the input string to a double asynchronously
+  return double.parse(input ?? '0.0');
+}
 
   @override
   Widget build(BuildContext context) {
-    final mapProvider = context.read<MapProvider>();
+    final mapProvider = Provider.of<MapProvider>(context, listen: false);
     print('mapAction: ${mapProvider.mapAction}');
     return Visibility(
       visible: mapProvider.mapAction == MapAction.selectTrip,
-      child: Positioned.fill(
-        top: 450,
-        child: Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(20),
-              topRight: Radius.circular(20),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.grey.withOpacity(0.5),
-                spreadRadius: 2,
-                blurRadius: 7,
-                offset: const Offset(0, 3), // changes position of shadow
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 12),
-              Card(
-                elevation: 4,
-                shape: const RoundedRectangleBorder(
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(8),
-                    topRight: Radius.circular(8),
-                  ),
-                ),
-                child: Column(
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(10, 80, 10, 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Row(
                   children: [
-                    const Divider(),
-                    ListTile(
-                      leading: const Icon(Icons.location_on),
-                      title: TextFormField(
-                        controller: destinationSearchController,
-                        onChanged: (value) {
-                          setState(() {
-                            showDestinationResults = value.isNotEmpty;
-                          });
-                          destinationPlacesAutocomplete(value);
+                    const Icon(Ionicons.pin, color: Colors.black),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: GooglePlaceAutoCompleteTextField(
+                        textEditingController: destinationSearchController,
+                        googleAPIKey: googleMapApi,
+                        inputDecoration: const InputDecoration(),
+                        debounceTime: 800, // default 600 ms,
+                        countries: ["ph"], // optional by default null is set
+                        isLatLngRequired: true, // if you required coordinates from place detail
+                        getPlaceDetailWithLatLng: (Prediction prediction) {
+                          print("Prediction details:");
+                          print("Description: ${prediction.description}");
+                          print("Place ID: ${prediction.placeId}");
+
+                          // Convert lat and lng to doubles
+                          final double latitude = double.parse(prediction.lat ?? '0.0');
+                          final double longitude = double.parse(prediction.lng ?? '0.0');
+
+                          print(" pred1 Latitude: $latitude");
+                          print("pred1 Longitude: $longitude");
+                          moveCameraToSelectedLocation(LatLng(latitude, longitude));
                         },
-                        decoration: const InputDecoration(
-                          hintText: 'Destination location',
-                          border: InputBorder.none,
-                        ),
+                        itemClick: (Prediction prediction) async {                          
+                          destinationSearchController.text = prediction.description.toString();
+                          destinationSearchController.selection = TextSelection.fromPosition(TextPosition(offset: prediction.description!.length));
+                        },
+                        itemBuilder: (context, index, Prediction prediction) {
+                          return Container(
+                            padding: const EdgeInsets.all(10),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.location_on),
+                                const SizedBox(
+                                  width: 7,
+                                ),
+                                Expanded(child: Text(prediction.description ?? ""))
+                              ],
+                            ),
+                          );
+                        },
+                        seperatedBuilder: const Divider(),
+                        // want to show close icon 
+                        isCrossBtnShown: true,
+                        // optional container padding
+                        containerHorizontalPadding: 10,
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
-              if (showPickupResults || showDestinationResults)
-                Card(
-                  elevation: 4,
-                  shape: const RoundedRectangleBorder(
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.zero,
-                      topRight: Radius.zero,
-                      bottomLeft: Radius.circular(8),
-                      bottomRight: Radius.circular(8),
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      if (showPickupResults)
-                        ...pickupPlacePredictions.map((prediction) {
-                          return LocationListTile(
-                            onLocationSelected: selectPickupLocation,
-                            prediction: prediction,
-                          );
-                        }),
-                      if (showDestinationResults)
-                        ...destinationPlacePredictions.map((prediction) {
-                          return LocationListTile(
-                            onLocationSelected: selectDestinationLocation,
-                            prediction: prediction,
-                          );
-                        }),
-                    ],
-                  ),
-                ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-const String googleMapApi = 'AIzaSyBbCl1N_OH0ortcF9zKDrK9Iuh6ynC_Rsg';
+const String googleMapApi = 'AIzaSyBRQ6mP0r_DI3fXrNUktOrjhXwxpHsUq6U';
 
 const Color primaryColor = Color(0xFF006491);
 const Color textColorLightTheme = Color(0xFF0D0D0E);

@@ -128,7 +128,7 @@ class NearestDriver extends StatelessWidget {
   }
 
   void sendRequestToAllDrivers() {
-    mapProvider!.changeMapActiontoSelectTrip();
+    // mapProvider!.changeMapActiontoSelectTrip();
   }
 
   void bookDriver(DriverWithDistance selectedDriver) {

@@ -9,7 +9,9 @@ import 'form_button.dart';
 import '../../models/auth_mode.dart';
 
 class LoginForm extends StatefulWidget {
-  const LoginForm({Key? key}) : super(key: key);
+  const LoginForm({Key? key, required this.context}) : super(key: key);
+
+  final BuildContext context;
 
   @override
   State<LoginForm> createState() => _LoginFormState();
@@ -18,16 +20,15 @@ class LoginForm extends StatefulWidget {
 class _LoginFormState extends State<LoginForm>
     with SingleTickerProviderStateMixin {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-
   final AuthServices _auth = AuthServices();
   late AuthMode authMode;
   late AnimationController _animationController;
   late Animation<double> _sizetransition;
-  late String _userName;
   late String _firstName;
   late String _lastName;
   late String _email;
   late String _password;
+  bool _isLoading = false; // Track loading state
 
   void _switchMode() {
     if (authMode == AuthMode.login) {
@@ -40,58 +41,67 @@ class _LoginFormState extends State<LoginForm>
   }
 
   Future<void> _authenticate(BuildContext context) async {
-    final UserProvider userProvider = Provider.of<UserProvider>(
-      context,
-      listen: false,
+  final UserProvider userProvider = Provider.of<UserProvider>(
+    context,
+    listen: false,
+  );
+
+  _formKey.currentState!.save();
+
+  setState(() {
+    _isLoading = true; // Set loading state to true when authentication starts
+  });
+
+  if (authMode == AuthMode.login) {
+    bool isAuthenticated = await _auth.login(
+      email: _email,
+      firstName: _firstName,
+      lastName: _lastName,
+      password: _password,
+      userProvider: userProvider,
+      context: context,
     );
 
-    _formKey.currentState!.save();
+    if (isAuthenticated) {
+      Navigator.of(context).pushReplacementNamed(TaxiApp.route);
+    }
+  } else {
+    bool isAccountCreated = await _auth.createAccount(
+      firstName: _firstName,
+      lastName: _lastName,
+      email: _email,
+      password: _password,
+      userProvider: userProvider,
+      context: context, // Pass context here
+    );
 
-    if (authMode == AuthMode.login) {
-      bool isAuthenticated = await _auth.login(
-        email: _email,
-        firstName: _firstName,
-        lastName: _lastName,
-        password: _password,
-        userProvider: userProvider,
+    if (isAccountCreated) {
+      showDialog(
         context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('Account Created'),
+            content: const Text('Your account has been created. Please check your email for verification'),
+            actions: <Widget>[
+              TextButton(
+                child: const Text('OK'),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+            ],
+          );
+        },
       );
-
-      if (isAuthenticated) {
-        // Navigate to the MapScreen upon successful login
-        Navigator.of(context).pushReplacementNamed(TaxiApp.route);
-      }
-    } else {
-      bool isAccountCreated = await _auth.createAccount(
-        username: _userName,
-        firstName: _firstName,
-        lastName: _lastName,
-        email: _email,
-        password: _password,
-        userProvider: userProvider,
-      );
-
-      if (isAccountCreated) {
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: const Text('Account Created'),
-              content: const Text('Your account has been created.'),
-              actions: <Widget>[
-                TextButton(
-                  child: const Text('OK'),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                ),
-              ],
-            );
-          },
-        );
-      }
     }
   }
+
+  setState(() {
+    _isLoading = false; // Set loading state to false when authentication finishes
+  });
+}
+
+
 
   @override
   void initState() {
@@ -124,12 +134,6 @@ class _LoginFormState extends State<LoginForm>
             child: Column(
               children: [
                 InputTextField(
-                  title: 'Username',
-                  handler: (String? value) => _userName = value!,
-                  icon: Icons.account_circle,
-                ),
-                const SizedBox(height: 15),
-                InputTextField(
                   title: 'First Name',
                   handler: (String? value) => _firstName = value!,
                   icon: Icons.account_circle,
@@ -157,10 +161,12 @@ class _LoginFormState extends State<LoginForm>
             password: true,
           ),
           const SizedBox(height: 15),
-          FormButton(
-            title: authMode == AuthMode.login ? 'Login' : 'Sign Up',
-            handler: () => _authenticate(context),
-          ),
+          _isLoading
+              ? CircularProgressIndicator() // Show loading indicator when _isLoading is true
+              : FormButton(
+                  title: authMode == AuthMode.login ? 'Login' : 'Sign Up',
+                  handler: () => _authenticate(context),
+                ),
           const SizedBox(height: 15),
           FormButton(
             title: authMode == AuthMode.login

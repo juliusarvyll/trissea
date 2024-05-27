@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import '../widgets/login_signup_screen_widgets/login_signup_form.dart';
 
 class LoginSignupScreen extends StatelessWidget {
@@ -27,9 +26,9 @@ class LoginSignupScreen extends StatelessWidget {
                   color: Theme.of(context).primaryColor,
                 ),
                 const SizedBox(height: 10),
-                Text('Taxi App', style: Theme.of(context).textTheme.headline1),
+                Text('TRISSEA', style: Theme.of(context).textTheme.displayLarge),
                 const SizedBox(height: 20),
-                const LoginForm(),
+                LoginForm(context: context), // Pass the context here
               ],
             ),
           ),
