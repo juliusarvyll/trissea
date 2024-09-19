@@ -59,7 +59,7 @@ class UserProvider with ChangeNotifier {
     try {
       final User? firebaseUser = FirebaseAuth.instance.currentUser;
       if (firebaseUser != null) {
-        await firebaseUser.updateEmail(newEmail);
+        await firebaseUser.verifyBeforeUpdateEmail(newEmail);
         if (_loggedUser != null) {
           _loggedUser!.email = newEmail;
         }
