@@ -11,48 +11,60 @@ class NavigationExample extends StatefulWidget {
 }
 
 class _NavigationExampleState extends State<NavigationExample> {
-  int currentPageIndex = 4; // Start with index 0 as the default selected button
+  int currentPageIndex = 0; // Default selected button index
 
   void _navigateToMap(BuildContext context) {
     Navigator.of(context).pushNamed(MapScreen.route);
     setState(() {
-      currentPageIndex = 0; // Set index to 0 when "Home" is selected
+      currentPageIndex = 0;
     });
   }
 
   void _navigateToTrips(BuildContext context) {
     Navigator.of(context).pushNamed(TripsScreen.route);
     setState(() {
-      currentPageIndex = 1; // Set index to 1 when "Trips" is selected
+      currentPageIndex = 1;
     });
   }
 
   void _navigateToProfile(BuildContext context) {
     Navigator.of(context).pushNamed(ProfileScreen.route);
     setState(() {
-      currentPageIndex = 2; // Set index to 2 when "Profile" is selected
+      currentPageIndex = 2;
     });
   }
 
   TextStyle _labelTextStyle(int index) {
     return TextStyle(
       fontSize: 12,
-      color: currentPageIndex == index ? Colors.blue : Colors.grey,
+      fontWeight: FontWeight.bold,
+      color: currentPageIndex == index ? Colors.green : Colors.grey[700],
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 60,
-      color: Colors.white,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: <Widget>[
-          buildNavItem(0, Icons.home, 'Home', _navigateToMap),
-          buildNavItem(1, Icons.navigation_rounded, 'Trips', _navigateToTrips),
-          buildNavItem(2, Icons.person, 'Profile', _navigateToProfile),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.2),
+            spreadRadius: 2,
+            blurRadius: 5,
+            offset: Offset(0, -1), // Shadow position
+          ),
         ],
+      ),
+      child: SafeArea(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: <Widget>[
+            buildNavItem(0, Icons.home, 'Home', _navigateToMap),
+            buildNavItem(1, Icons.navigation_rounded, 'Trips', _navigateToTrips),
+            buildNavItem(2, Icons.person, 'Profile', _navigateToProfile),
+          ],
+        ),
       ),
     );
   }
@@ -64,19 +76,23 @@ class _NavigationExampleState extends State<NavigationExample> {
           onTap(context);
         }
       },
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            size: 24,
-            color: currentPageIndex == index ? Colors.blue : Colors.grey,
-          ),
-          Text(
-            label,
-            style: _labelTextStyle(index),
-          ),
-        ],
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 28,
+              color: currentPageIndex == index ? Colors.green : Colors.grey[600],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: _labelTextStyle(index),
+            ),
+          ],
+        ),
       ),
     );
   }

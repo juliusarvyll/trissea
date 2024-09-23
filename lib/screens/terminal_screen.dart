@@ -40,18 +40,6 @@ class _TerminalScreenState extends State<TerminalScreen> {
         print("whatttt${_mapProvider!.mapAction}");
         return Scaffold(
           key: scaffoldKey,
-          appBar: AppBar(
-            title: Text('Terminals', style: TextStyle(color: Colors.white)),
-            backgroundColor: Colors.green,
-            actions: <Widget>[
-              IconButton(
-                icon: Icon(Icons.info_outline),
-                onPressed: () {
-                  // Action for the button
-                },
-              ),
-            ],
-          ),
           body: Stack(
             children: [
               StreamBuilder<QuerySnapshot>(

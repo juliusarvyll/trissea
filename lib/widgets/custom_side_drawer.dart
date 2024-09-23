@@ -34,27 +34,27 @@ class CustomSideDrawer extends StatelessWidget {
             },
             child: loggedUser != null
                 ? UserAccountsDrawerHeader(
-                    decoration: const BoxDecoration(
-                      color: Colors.black,
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade800,
                     ),
-                    currentAccountPicture: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.grey[50],
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
+                    currentAccountPicture: CircleAvatar(
+                      backgroundColor: Colors.white,
+                      child: Icon(
                         Icons.person,
                         size: 50,
-                        color: Colors.black45,
+                        color: Colors.green.shade800,
                       ),
                     ),
-                    accountName: Text(FirebaseAuth.instance.currentUser!.displayName.toString()),
+                    accountName: Text(
+                      FirebaseAuth.instance.currentUser!.displayName.toString(),
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     accountEmail: Text(loggedUser.email!),
                   )
                 : Container(
                     height: 200,
-                    color: Theme.of(context).primaryColor,
-                    child: const Center(
+                    color: Colors.green.shade800,
+                    child: Center(
                       child: CircularProgressIndicator(
                         color: Colors.white,
                       ),
@@ -90,18 +90,29 @@ class CustomSideDrawer extends StatelessWidget {
   }
 
   Widget _buildButtonTile({
-    BuildContext? context,
-    String? title,
-    IconData? icon,
-    Function()? onTap,
+    required BuildContext context,
+    required String title,
+    required IconData icon,
+    required Function() onTap,
   }) {
     return ListTile(
-      title: Text(title!),
-      leading: Icon(icon),
+      title: Text(
+        title,
+        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+      ),
+      leading: Icon(
+        icon,
+        color: Colors.green.shade800,
+      ),
       onTap: () {
-        Navigator.pop(context!);
-        onTap!();
+        Navigator.pop(context);
+        onTap();
       },
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      tileColor: Colors.grey.shade100,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+      ),
     );
   }
 }
