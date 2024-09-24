@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:trissea/models/map_action.dart';
 import 'package:trissea/models/terminal_trips_model.dart';
 import 'package:trissea/providers/map_provider.dart';
+import 'package:trissea/screens/login_signup_screen.dart';
 import 'package:trissea/widgets/terminal_screen_widgets/accepted_request.dart';
 import 'package:trissea/widgets/terminal_screen_widgets/pay_driver_terminal.dart';
 import 'package:trissea/widgets/terminal_screen_widgets/search_terminal.dart';
@@ -156,7 +157,7 @@ class _TerminalScreenState extends State<TerminalScreen> {
     User? currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) {
       // Handle user not signed in
-      print("User is not signed in");
+      Navigator.of(context).push(MaterialPageRoute(builder: (context) => const LoginSignupScreen()));
       return;
     }
     String passengerId = currentUser.uid;
