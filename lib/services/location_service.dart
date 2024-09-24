@@ -50,4 +50,11 @@ class LocationService {
       ),
     );
   }
+
+  Future<bool> isLocationPermissionGranted() async {
+    LocationPermission permission = await Geolocator.checkPermission();
+
+    // Check if the permission is granted
+    return permission == LocationPermission.always || permission == LocationPermission.whileInUse;
+  }
 }

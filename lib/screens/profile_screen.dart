@@ -49,7 +49,7 @@ class _ProfileScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Profile', style: TextStyle(color: Colors.white)),
-        backgroundColor: Colors.blueGrey[800],
+        backgroundColor: Colors.green,
       ),
       drawer: const CustomSideDrawer(),
       body: Padding(
@@ -63,8 +63,8 @@ class _ProfileScreen extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Colors.blueGrey[50],
                 borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
+                boxShadow: const[
+                   BoxShadow(
                     color: Colors.black12,
                     blurRadius: 8,
                     offset: Offset(0, 2),
@@ -76,7 +76,7 @@ class _ProfileScreen extends StatelessWidget {
                   // Profile Picture
                   CircleAvatar(
                     radius: 65,
-                    backgroundImage: AssetImage("assets/6195145.jpg"),
+                    backgroundImage: const AssetImage("images/default_profile.png"), // Changed semicolon to comma
                     backgroundColor: Colors.grey[200],
                   ),
                   const SizedBox(height: 10),
@@ -151,7 +151,7 @@ class _ProfileScreen extends StatelessWidget {
       leading: Icon(icon, color: color),
       title: Text(title, style: TextStyle(color: color)),
       onTap: onTap,
-      contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
         side: BorderSide(color: Colors.grey[300]!),

@@ -1,7 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:trissea/screens/home_screen.dart';
+// import 'package:trissea/screens/home_screen.dart';
 import 'package:trissea/screens/profile_screen.dart';
 import '../models/user_model.dart' as user;
 import '../providers/map_provider.dart';
@@ -62,14 +62,14 @@ class CustomSideDrawer extends StatelessWidget {
                   ),
           ),
           const SizedBox(height: 10),
-          _buildButtonTile(
-            context: context,
-            title: 'Home',
-            icon: Icons.home_rounded,
-            onTap: () => Navigator.of(context).pushNamed(
-              TrisseaHomeScreen.route,
-            ),
-          ),
+          // _buildButtonTile(
+          //   context: context,
+          //   title: 'Home',
+          //   icon: Icons.home_rounded,
+          //   onTap: () => Navigator.of(context).pushNamed(
+          //     TrisseaHomeScreen.route,
+          //   ),
+          // ),
           _buildButtonTile(
             context: context,
             title: 'Logout',
