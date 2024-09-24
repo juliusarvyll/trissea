@@ -51,8 +51,6 @@ class MapProvider with ChangeNotifier {
   StreamSubscription<User>? _driverStream;
   StreamSubscription<Position>? _positionStream;
   bool _driverArrivingInit = false;
-  bool _isInitialized = false;
-  bool _isDeviceLocationSet = false; 
 
   GlobalKey<ScaffoldState>? get scaffoldKey => _scaffoldKey;
   CameraPosition? get cameraPos => _cameraPos;
@@ -83,8 +81,6 @@ class MapProvider with ChangeNotifier {
   StreamSubscription<Trip>? get tripStream => _tripStream;
   StreamSubscription<User>? get driverStream => _driverStream;
   StreamSubscription<Position>? get positionStream => _positionStream;
-  bool get isInitialized => _isInitialized;
-  bool get isDeviceLocationSet => _isDeviceLocationSet;
 
   MapProvider() {
     _scaffoldKey = null;
@@ -109,7 +105,6 @@ class MapProvider with ChangeNotifier {
     _tripStream = null;
     _driverStream = null;
     _positionStream = null;
-    _isDeviceLocationSet = false;
     setCustomPin();
   }
 
@@ -130,104 +125,112 @@ class MapProvider with ChangeNotifier {
     );
   }
 
- void setScaffoldKey(GlobalKey<ScaffoldState> key) {
-  _scaffoldKey = key;
+  void setScaffoldKey(GlobalKey<ScaffoldState> scaffoldKey) {
+    _scaffoldKey = scaffoldKey;
+  }
+
+  Future<void> initializeMap({GlobalKey<ScaffoldState>? scaffoldKey}) async {
+  Position? deviceLocation;
+  LatLng? cameraLatLng;
+
+  // Ensure scaffoldKey is not null before using it
+  if (scaffoldKey != null) {
+    setScaffoldKey(scaffoldKey);
+
+    if (kDebugMode) {
+      print('scaffold: $scaffoldKey');
+    }
+
+    if (await _locationService.checkLocationIfPermanentlyDisabled()) {
+      // Use the scaffoldKey safely
+      showDialog(
+        context: scaffoldKey.currentContext!,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            content: const Text(
+              'Location permission is permanently disabled. Enable it from app settings',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Geolocator.openAppSettings(),
+                child: const Text('Open App Settings'),
+              ),
+            ],
+          );
+        },
+      );
+    } else {
+      if (await _locationService.checkLocationPermission()) {
+        try {
+          deviceLocation = await _locationService.getLocation();
+          cameraLatLng = LatLng(
+            deviceLocation.latitude,
+            deviceLocation.longitude,
+          );
+          setDeviceLocation(deviceLocation);
+          setDeviceLocationAddress(
+            deviceLocation.latitude,
+            deviceLocation.longitude,
+          );
+          addMarkerPickup(cameraLatLng, _personPin!);
+
+          // Cancel the position stream if it exists
+          _positionStream?.cancel();
+          // Listen to position stream after cancelation
+          listenToPositionStream();
+        } catch (error) {
+          // Specific error handling can be added here
+          if (kDebugMode) {
+            print('Unable to get device location: $error');
+          }
+        }
+      }
+    }
+  }
+
+  // Use default LatLng if deviceLocation is null
+  cameraLatLng ??= const LatLng(37.42227936982647, -122.08611108362673);
+
+  // Set camera position
+  setCameraPosition(cameraLatLng);
+
+  // Notify listeners after all necessary state updates
   notifyListeners();
 }
 
-Future<void> initializeMap({GlobalKey<ScaffoldState>? scaffoldKey}) async {
-    if (scaffoldKey != null) {
-      setScaffoldKey(scaffoldKey);
-    } else {
-      throw Exception('ScaffoldKey is not set. Call setScaffoldKey before initializing the map.');
-    }
 
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      try {
-        Position? deviceLocation;
-        LatLng? cameraLatLng;
-
-        if (scaffoldKey.currentContext == null) {
-          print('Scaffold context is null. Ensure that the widget tree is built.');
-          return;
-        }
-
-        if (await _locationService.checkLocationPermission()) {
-          if (!await _locationService.isLocationPermissionGranted()) {
-            _showLocationPermissionDialog(scaffoldKey.currentContext!);
-          } else {
-            try {
-              deviceLocation = await _locationService.getLocation();
-              cameraLatLng = LatLng(deviceLocation.latitude, deviceLocation.longitude);
-              setDeviceLocation(deviceLocation);
-              await setDeviceLocationAddress(deviceLocation.latitude, deviceLocation.longitude);
-              addMarkerPickup(cameraLatLng, _personPin!);
-
-              await _positionStream?.cancel();
-              listenToPositionStream();
-            } catch (error) {
-              print('Error getting device location: $error');
-            }
-          }
-        }
-
-        cameraLatLng ??= const LatLng(37.42227936982647, -122.08611108362673);
-        setCameraPosition(cameraLatLng);
-
-        _isInitialized = true;
-        notifyListeners();
-      } catch (e) {
-        print('Error during map initialization: $e');
-        rethrow;
-      }
-    });
+  void setDeviceLocation(Position location) {
+    _deviceLocation = location;
   }
-
-void _showLocationPermissionDialog(BuildContext context) {
-  showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        content: const Text(
-          'Location permission is permanently disabled. Enable it from app settings.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Geolocator.openAppSettings(),
-            child: const Text('Open App Settings'),
-          ),
-        ],
-      );
-    },
-  );
-}
-
-void setDeviceLocation(Position location) {
-  if (_isDeviceLocationSet) return; // Prevent multiple calls
-  _deviceLocation = location;
-  _isDeviceLocationSet = true; // Set the flag to true
-}
 
 Future<void> setDeviceLocationAddress(double latitude, double longitude) async {
   const bool isDebugMode = true;
   final api = GoogleGeocodingApi(googleMapApi, isLogged: isDebugMode);
-
   try {
-    final reversedSearchResults = await api.reverse('$latitude,$longitude');
+    final reversedSearchResults  = await api.reverse(
+      '$latitude,$longitude',
+    );
 
-    final formattedAddress = reversedSearchResults.results.firstOrNull?.mapToPretty();
+      final formattedAddress = reversedSearchResults.results.firstOrNull?.mapToPretty();
 
-    print('Formatted Address: ${formattedAddress?.streetName}, ${formattedAddress?.city}');
-    notifyListeners();
+      if (kDebugMode) {
+        print('formattedAddress: ${formattedAddress?.streetName}, ${formattedAddress?.city}');
+      }
+      notifyListeners();
   } catch (e) {
-    print('Error fetching address: $e');
+    if (kDebugMode) {
+      print('Error: $e');
+    }
   }
 }
 
-void onMapCreated(GoogleMapController controller) {
-  _controller = controller;
-  mapController = Future.value(controller);
-}
+
+
+
+  void onMapCreated(GoogleMapController controller) {
+    _controller = controller;
+    mapController = Future.value(controller);
+  }
 
   void moveCameraToDestination(
     LatLng latLng,
@@ -236,8 +239,12 @@ void onMapCreated(GoogleMapController controller) {
       LatLng(latLng.latitude, latLng.longitude),
       15,
     );
-    print('moving Latitude: ${latLng.latitude}');
-    print('moving Longitude: ${latLng.longitude}');
+    if (kDebugMode) {
+      print('moving Latitude: ${latLng.latitude}');
+    }
+    if (kDebugMode) {
+      print('moving Longitude: ${latLng.longitude}');
+    }
 
     onTap(latLng);
   }
@@ -254,7 +261,9 @@ void onMapCreated(GoogleMapController controller) {
     if (mapAction == MapAction.selectTrip ||
         mapAction == MapAction.tripSelected) {
           
-      print(mapAction);
+      if (kDebugMode) {
+        print(mapAction);
+      }
       addMarker(pos, _selectionPin!);
       notifyListeners();
       Future.delayed(const Duration(milliseconds: 500), () async {
@@ -272,7 +281,9 @@ void onMapCreated(GoogleMapController controller) {
   void setFinalLocation(LatLng pos) async {
     if (mapAction == MapAction.selectTrip ||
         mapAction == MapAction.tripSelected) {
-      print(mapAction);
+      if (kDebugMode) {
+        print(mapAction);
+      }
       addFinalMarker(pos, _selectionPin!);
       notifyListeners();
       Future.delayed(const Duration(milliseconds: 500), () async {
@@ -462,7 +473,9 @@ void onMapCreated(GoogleMapController controller) {
       ),
     );
   }
-  print("polylines: $_polylines");
+  if (kDebugMode) {
+    print("polylines: $_polylines");
+  }
   return [result1, result2];
 }
 
@@ -532,10 +545,14 @@ void onMapCreated(GoogleMapController controller) {
 
     _remoteAddress = '$streetNumber $_remoteAddress, $city';
 
-    print('remoteFormattedAddress: ${remoteFormattedAddress?.streetName}, ${remoteFormattedAddress?.city}');
+    if (kDebugMode) {
+      print('remoteFormattedAddress: ${remoteFormattedAddress?.streetName}, ${remoteFormattedAddress?.city}');
+    }
     notifyListeners();
   } catch (e) {
-    print('Error: $e');
+    if (kDebugMode) {
+      print('Error: $e');
+    }
   }
 }
 
@@ -589,10 +606,14 @@ void onMapCreated(GoogleMapController controller) {
 
     _remoteAddress = '$streetNumber $_remoteAddress, $city';
 
-    print('remoteFormattedAddress: ${remoteFormattedAddress?.streetName}, ${remoteFormattedAddress?.city}');
+    if (kDebugMode) {
+      print('remoteFormattedAddress: ${remoteFormattedAddress?.streetName}, ${remoteFormattedAddress?.city}');
+    }
     notifyListeners();
   } catch (e) {
-    print('Error: $e');
+    if (kDebugMode) {
+      print('Error: $e');
+    }
   }
   }
 

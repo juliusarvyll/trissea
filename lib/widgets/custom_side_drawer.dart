@@ -1,12 +1,11 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-// import 'package:trissea/screens/home_screen.dart';
-import 'package:trissea/screens/profile_screen.dart';
 import '../models/user_model.dart' as user;
 import '../providers/map_provider.dart';
 import '../providers/user_provider.dart';
 import '../screens/login_signup_screen.dart';
+import '../screens/profile_screen.dart';
 
 class CustomSideDrawer extends StatelessWidget {
   const CustomSideDrawer({Key? key}) : super(key: key);
@@ -46,10 +45,10 @@ class CustomSideDrawer extends StatelessWidget {
                       ),
                     ),
                     accountName: Text(
-                      FirebaseAuth.instance.currentUser!.displayName.toString(),
+                      FirebaseAuth.instance.currentUser?.displayName ?? 'User',
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    accountEmail: Text(loggedUser.email!),
+                    accountEmail: Text(loggedUser.email ?? 'Email not available'),
                   )
                 : Container(
                     height: 200,
@@ -62,28 +61,21 @@ class CustomSideDrawer extends StatelessWidget {
                   ),
           ),
           const SizedBox(height: 10),
-          // _buildButtonTile(
-          //   context: context,
-          //   title: 'Home',
-          //   icon: Icons.home_rounded,
-          //   onTap: () => Navigator.of(context).pushNamed(
-          //     TrisseaHomeScreen.route,
-          //   ),
-          // ),
           _buildButtonTile(
             context: context,
             title: 'Logout',
             icon: Icons.exit_to_app,
-            onTap: () {
+            onTap: () async {
               mapProvider.stopListenToPositionStream();
               userProvider.clearUser();
+              await FirebaseAuth.instance.signOut();
               Navigator.of(context).pushNamedAndRemoveUntil(
                 LoginSignupScreen.route,
                 (Route<dynamic> route) => false,
               );
-              FirebaseAuth.instance.signOut();
             },
           ),
+          // Remove the duplicate logout button
         ],
       ),
     );
@@ -93,7 +85,7 @@ class CustomSideDrawer extends StatelessWidget {
     required BuildContext context,
     required String title,
     required IconData icon,
-    required Function() onTap,
+    required VoidCallback onTap,
   }) {
     return ListTile(
       title: Text(
