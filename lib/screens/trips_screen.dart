@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:trissea/widgets/custom_side_drawer.dart';
 import '../models/trip_model.dart';
 import '../services/database_service.dart';
 
@@ -11,11 +10,16 @@ class TripsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      drawer: const CustomSideDrawer(),
       appBar: AppBar(
         title: const Text('Trip History', style: TextStyle(color: Colors.white)),
-        backgroundColor: Colors.blueGrey[800],
+        backgroundColor: Colors.green,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+        ),
       ),
       body: FutureBuilder(
         future: DatabaseService().getCompletedTrips(),
@@ -67,7 +71,7 @@ class TripsScreen extends StatelessWidget {
               const SizedBox(height: 10),
               _buildInfoText('Distance:', '${trip.distance!.toStringAsFixed(2)} Km'),
               const SizedBox(height: 10),
-              _buildInfoText('Cost:', '\$${trip.cost!.toStringAsFixed(2)}'),
+              _buildInfoText('Cost:', '₱${trip.cost!.toStringAsFixed(2)}'),
             ],
           ),
         ),

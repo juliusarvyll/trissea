@@ -37,9 +37,16 @@ class _TerminalScreenState extends State<TerminalScreen> {
     return Consumer<MapProvider>(
       builder: (BuildContext context, MapProvider mapProvider, _) {
         _mapProvider = mapProvider;
-        
-        print("whatttt${_mapProvider!.mapAction}");
+
         return Scaffold(
+          appBar: AppBar(
+            title: Text('Terminals', style: TextStyle(color: Colors.white)),
+            backgroundColor: Colors.green,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ),
           key: scaffoldKey,
           body: Stack(
             children: [
@@ -57,7 +64,7 @@ class _TerminalScreenState extends State<TerminalScreen> {
                   final terminals = snapshot.data?.docs ?? [];
 
                   if (terminals.isEmpty) {
-                    return Center(child: Text('No terminals found'));
+                    return const Center(child: Text('No terminals found'));
                   }
 
                   return ListView.builder(
@@ -67,16 +74,16 @@ class _TerminalScreenState extends State<TerminalScreen> {
                       final data = terminal.data() as Map<String, dynamic>;
 
                       return Card(
-                        margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                        margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                         child: ListTile(
                           title: Text(
                             data['name'] ?? 'No Name',
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           subtitle: Text(data['location'] ?? 'No Location'),
-                          trailing: Icon(Icons.arrow_forward),
+                          trailing: const Icon(Icons.arrow_forward),
                           onTap: () {
                             _showBookingDialog = true;
                             _showBookingOptionsDialog(data);
@@ -110,7 +117,7 @@ class _TerminalScreenState extends State<TerminalScreen> {
                   bottom: 100,
                   child: TerminalTripStarted(mapProvider: mapProvider, tripDocumentId: _tripDocumentId!),
                 ),
-                if (_tripDocumentId != null && _mapProvider?.mapAction == MapAction.endedTerminalTrip)
+              if (_tripDocumentId != null && _mapProvider?.mapAction == MapAction.endedTerminalTrip)
                 Positioned(
                   left: 0,
                   right: 0,
@@ -135,13 +142,13 @@ class _TerminalScreenState extends State<TerminalScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               TextButton(
-                child: Text('Pay for Whole Tricycle (\$110)'),
+                child: Text('Pay for Whole Tricycle (₱110)'),
                 onPressed: () {
                   _handleBooking(terminalData, 110);
                 },
               ),
               TextButton(
-                child: Text('Wait for Other Passengers (\$20)'),
+                child: Text('Wait for Other Passengers (₱20)'),
                 onPressed: () {
                   _handleBooking(terminalData, 20);
                 },
@@ -221,7 +228,7 @@ class _TerminalScreenState extends State<TerminalScreen> {
                     ),
                     SizedBox(height: 8),
                     Text('Location: ${terminalData['location'] ?? 'No Location'}'),
-                    Text('Cost: \$${cost.toString()}'),
+                    Text('Cost: ₱${cost.toString()}'),
                   ],
                 ),
                 actions: <Widget>[
@@ -281,7 +288,7 @@ class _TerminalScreenState extends State<TerminalScreen> {
       var data = snapshot.data();
       if (data != null && data['paid'] == true) {
         setState(() {
-          _mapProvider?.changeMapAction(MapAction.selectTerminal);
+          _mapProvider?.changeMapAction(MapAction.searchTerminal);
           print('mapAction: ${_mapProvider?.mapAction}');
         });
       }
@@ -300,8 +307,6 @@ class _TerminalScreenState extends State<TerminalScreen> {
           _mapProvider?.changeMapAction(MapAction.startTerminalTrip);
           print('mapAction: ${_mapProvider?.mapAction}');
         });
-      } else {
-        print('Trip has not started yet or document data is null.');
       }
     });
   }

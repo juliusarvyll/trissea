@@ -29,7 +29,7 @@ class SearchDriver extends StatelessWidget {
     return Visibility(
       visible: mapProvider.mapAction == MapAction.searchDriver,
       child: Positioned.fill(
-        top: screenSize.height * 0.80,
+        top: screenSize.height * 0.75,
         child: Container(
           color: Colors.white,
           padding: const EdgeInsets.all(20),

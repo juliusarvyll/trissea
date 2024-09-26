@@ -92,23 +92,13 @@ class _ConfirmPickupState extends State<ConfirmPickup> {
   }
 
   Future<String> getTravelTime() async {
-    if (widget.mapProvider!.finalLocation != null) {
-      return calculateTravelTimeFinal(
-        widget.mapProvider!.deviceLocation?.latitude ?? 0.0,
-        widget.mapProvider!.deviceLocation?.longitude ?? 0.0,
-        widget.mapProvider!.remoteLocation?.latitude ?? 0.0,
-        widget.mapProvider!.remoteLocation?.longitude ?? 0.0,
-        widget.mapProvider!.finalLocation?.latitude ?? 0.0,
-        widget.mapProvider!.finalLocation?.longitude ?? 0.0,
-      );
-    } else {
+
       return calculateTravelTime(
         widget.mapProvider!.deviceLocation?.latitude ?? 0.0,
         widget.mapProvider!.deviceLocation?.longitude ?? 0.0,
         widget.mapProvider!.remoteLocation?.latitude ?? 0.0,
         widget.mapProvider!.remoteLocation?.longitude ?? 0.0,
       );
-    }
   }
 
   Future<void> _startTrip(BuildContext context) async {
@@ -116,11 +106,9 @@ class _ConfirmPickupState extends State<ConfirmPickup> {
 
     final deviceLocation = widget.mapProvider?.deviceLocation;
     final remoteLocation = widget.mapProvider?.remoteLocation;
-    final finalLocation = widget.mapProvider?.finalLocation;
 
-    print("final location $finalLocation");
 
-    if (remoteLocation != null && finalLocation == null) {
+    if (remoteLocation != null) {
       print("this");
       Trip newTrip = Trip(
         pickupAddress: widget.mapProvider?.deviceAddress ?? "",
@@ -159,13 +147,10 @@ class _ConfirmPickupState extends State<ConfirmPickup> {
       Trip newTrip = Trip(
         pickupAddress: widget.mapProvider?.deviceAddress ?? "",
         destinationAddress: widget.mapProvider?.remoteAddress ?? "",
-        finalDestinationAddress: widget.mapProvider?.finalAddress ?? "",
         pickupLatitude: deviceLocation!.latitude,
         pickupLongitude: deviceLocation.longitude,
         destinationLatitude: remoteLocation!.latitude,
         destinationLongitude: remoteLocation.longitude,
-        finalDestinationLatitude: finalLocation!.latitude,
-        finalDestinationLongitude: finalLocation.longitude,
         distance: widget.mapProvider?.distance,
         cost: widget.mapProvider?.cost,
         passengerId: FirebaseAuth.instance.currentUser?.uid ?? "",
@@ -193,161 +178,9 @@ class _ConfirmPickupState extends State<ConfirmPickup> {
     }
   }
 
-  Future<void> _startTodaTrip(BuildContext context, String todaName, {required bool shareRide}) async {
-    final DatabaseService dbService = DatabaseService();
-
-    final deviceLocation = widget.mapProvider?.deviceLocation;
-    
-
-      print("toda");
-      Trip newTrip = Trip(
-        pickupAddress: widget.mapProvider?.deviceAddress ?? "",
-        destinationAddress: widget.mapProvider?.remoteAddress ?? "",
-        pickupLatitude: deviceLocation!.latitude,
-        rideShare: shareRide,
-        pickupLongitude: deviceLocation.longitude,
-        distance: widget.mapProvider?.distance,
-        cost: widget.mapProvider?.cost,
-        passengerId: FirebaseAuth.instance.currentUser?.uid ?? "",
-        passengerName: FirebaseAuth.instance.currentUser?.displayName ?? "",
-        passengerCount: _selectedPassengerCount,
-        feedback: 0,
-        todaName: todaName,
-      );
-
-      String tripId = await dbService.startTodaTrip(newTrip);
-      newTrip.id = tripId;
-      widget.mapProvider?.confirmTrip(newTrip);
-
-      widget.mapProvider?.triggerAutoCancelTrip(
-        tripDeleteHandler: () {
-          newTrip.canceled = true;
-          dbService.updateTodaTrip(newTrip);
-        },
-        snackbarHandler: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Trip is not accepted by any driver'),
-            ),
-          );
-        },
-      );
-  }
-  void showTerminalListDialog(Function(String) terminalSelected) {
-  showDialog(
-    context: context,
-    builder: (BuildContext   context) {
-      return AlertDialog(
-        title: const Text("Select Terminal"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              title: const Text('Terminal 1'),
-              onTap: () {
-                String selectedTerminal = 'Terminal 1';
-                terminalSelected(selectedTerminal);
-                Navigator.of(context).pop();
-                _showRideSharingDialog(context, selectedTerminal);
-              },
-            ),
-            ListTile(
-              title: const Text('Terminal 2'),
-              onTap: () {
-                String selectedTerminal = 'Terminal 2';
-                terminalSelected(selectedTerminal);
-                Navigator.of(context).pop();
-                _showRideSharingDialog(context, selectedTerminal);
-              },
-            ),
-            // Add more ListTiles for other terminals as needed
-          ],
-        ),
-      );
-    },
-  );
-}
-void _showRideSharingDialog(BuildContext context, String terminalName) {
-  showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        title: const Text("Share Ride?"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _startTodaTrip(context, terminalName, shareRide: true);
-              },
-              child: const Text(
-                "Yes",
-                style: TextStyle(color: Colors.white),
-              ),
-            ),
-            const SizedBox(height: 10),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _startTodaTrip(context, terminalName, shareRide: false);
-              },
-              child: const Text("No", style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        ),
-      );
-    },
-  );
-}
-
-
-
-  void chooseTricycle() {
-  showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        title: const Text("Select option"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ElevatedButton(
-              onPressed: () {
-                // Handle Roaming option
-                _startTrip(context);
-                Navigator.of(context).pop();
-              },
-              child: const Text(
-                "Roaming",
-                style: TextStyle(color: Colors.white),
-              ),
-            ),
-            const SizedBox(height: 10),
-            ElevatedButton(
-              onPressed: () {
-                // Handle Terminal option
-                // Show another dialog with terminal list
-                Navigator.of(context).pop();
-                showTerminalListDialog((terminalName) {
-                  setState(() {
-                    todaName = terminalName;
-                  });
-                   // Pass todaName
-                });
-              },
-              child: const Text("Terminal", style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        ),
-      );
-    },
-  );
-}
-
   
 
-  @override
+@override
 Widget build(BuildContext context) {
   return Visibility(
     visible: widget.mapProvider!.mapAction == MapAction.tripSelected &&
@@ -384,25 +217,6 @@ Widget build(BuildContext context) {
                             Expanded(
                               child: Text(
                                 widget.mapProvider!.remoteAddress!,
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      if (widget.mapProvider!.finalAddress != null)
-                        Row(
-                          children: [
-                            const Icon(Icons.location_pin),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                widget.mapProvider!.finalAddress!,
                                 style: const TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
@@ -527,14 +341,14 @@ Widget build(BuildContext context) {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.black,
                     padding: const EdgeInsets.all(15),
-                    shape: RoundedRectangleBorder(
+                    shape: const RoundedRectangleBorder(
                       borderRadius: BorderRadius.only(
                         topLeft: Radius.circular(10),
                         topRight: Radius.circular(10),
                       ),
                     ),
                   ),
-                  onPressed: () => chooseTricycle(),
+                  onPressed: () => _startTrip(context),
                   child: const Text(
                     'CONFIRM',
                     style: TextStyle(

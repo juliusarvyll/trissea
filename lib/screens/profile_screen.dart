@@ -5,7 +5,6 @@ import 'package:trissea/providers/user_provider.dart';
 import 'package:trissea/screens/login_signup_screen.dart';
 import 'package:trissea/screens/profile_screen_edit.dart';
 import 'package:trissea/screens/trips_screen.dart';
-import 'package:trissea/widgets/custom_side_drawer.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -50,8 +49,11 @@ class _ProfileScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Profile', style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.green,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
       ),
-      drawer: const CustomSideDrawer(),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -63,8 +65,8 @@ class _ProfileScreen extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Colors.blueGrey[50],
                 borderRadius: BorderRadius.circular(12),
-                boxShadow: const[
-                   BoxShadow(
+                boxShadow: const [
+                  BoxShadow(
                     color: Colors.black12,
                     blurRadius: 8,
                     offset: Offset(0, 2),

@@ -13,6 +13,7 @@ import 'screens/trips_screen.dart';
 import 'screens/profile_screen.dart';
 import 'theme.dart';
 
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
@@ -32,6 +33,7 @@ class TaxiApp extends StatelessWidget {
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
+        navigatorKey: navigatorKey,
         title: 'Trissea App',
         theme: theme,
         home: const MapScreen(), // Set your default home screen here

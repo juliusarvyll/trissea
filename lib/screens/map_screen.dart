@@ -22,72 +22,22 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> {
-  LatLng _draggedLatlng = const LatLng(0.0, 0.0);
+  LatLng _draggedLatlng = const LatLng(0.0, 0.0); // Initialized with a default value
   MapProvider? _mapProvider;
-  final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
   void initState() {
     super.initState();
     _mapProvider = Provider.of<MapProvider>(context, listen: false);
-    _mapProvider!.initializeMap(
-      scaffoldKey: scaffoldKey,
-    );
+    _mapProvider!.setScaffoldKey(_scaffoldKey);
+    _mapProvider!.initializeMap(scaffoldKey: _scaffoldKey);
     _mapProvider!.changeMapAction(MapAction.selectTrip);
   }
 
   void onButtonPressed() {
-    if (_mapProvider!.remoteLocation == null) {
-      showAddDestinationDialog();
-    } else {
-      addFinalDestination();
-    }
-  }
-
-  void showAddDestinationDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text("Add Another Destination?"),
-          content: const Text("Do you want to add another destination location?"),
-          actions: [
-            TextButton(
-              onPressed: () {
-                _mapProvider!.changeMapAction(MapAction.tripSelected);
-                if (_mapProvider!.remoteLocation == null) {
-                  addRemoteDestination();
-                } else {
-                  addFinalDestination();
-                }
-                Navigator.pop(context);
-              },
-              child: const Text("No"),
-            ),
-            TextButton(
-              onPressed: () {
-                if (_mapProvider!.remoteLocation == null) {
-                  addRemoteDestination();
-                } else {
-                  addFinalDestination();
-                }
-                Navigator.pop(context);
-              },
-              child: const Text("Yes"),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void addRemoteDestination() {
-    _mapProvider!.onTap(_draggedLatlng);
-  }
-
-  void addFinalDestination() {
     _mapProvider!.changeMapAction(MapAction.tripSelected);
-    _mapProvider!.setFinalLocation(_draggedLatlng);
+    _mapProvider!.onTap(_draggedLatlng);
   }
 
   void getMarkerPosition(CameraPosition cameraPosition) async {
@@ -103,11 +53,11 @@ class _MapScreenState extends State<MapScreen> {
   @override
   Widget build(BuildContext context) {
     return Consumer<MapProvider>(
-      builder: (BuildContext context, MapProvider mapProvider, _) {
+      builder: (BuildContext context, mapProvider, _) {
         _mapProvider = mapProvider;
 
         return Scaffold(
-          key: scaffoldKey,
+          key: _scaffoldKey,
           drawer: const CustomSideDrawer(),
           body: Stack(
             children: [
@@ -129,7 +79,6 @@ class _MapScreenState extends State<MapScreen> {
                                   onCameraMove: getMarkerPosition,
                                   onCameraIdle: updateMarkerPosition,
                                   markers: {
-                                    ...mapProvider.markers!,
                                     ...mapProvider.markersPickup!,
                                     ...mapProvider.markersFinal!
                                   },
@@ -138,6 +87,13 @@ class _MapScreenState extends State<MapScreen> {
                               : const Center(
                                   child: CircularProgressIndicator(),
                                 ),
+                          const Center(
+                            child: Icon(
+                              Icons.location_on,
+                              color: Colors.red,
+                              size: 36,
+                            ),
+                          ),
                           ConfirmPickup(mapProvider: mapProvider),
                           SearchDriver(mapProvider: mapProvider),
                           TripStarted(mapProvider: mapProvider),
@@ -145,7 +101,7 @@ class _MapScreenState extends State<MapScreen> {
                           FeedbackPage(mapProvider: mapProvider),
                           if (mapProvider.mapAction == MapAction.selectTrip)
                             SearchLocationWidget(mapProvider: mapProvider),
-                          FloatingDrawerBarButton(scaffoldKey: scaffoldKey),
+                          FloatingDrawerBarButton(scaffoldKey: _scaffoldKey),
                         ],
                       ),
                     ),
@@ -154,62 +110,50 @@ class _MapScreenState extends State<MapScreen> {
               ),
               if (mapProvider.mapAction == MapAction.selectTrip)
                 Positioned(
-                  bottom: 10, // Adjust the distance from the bottom
+                  bottom: 0,
                   left: 0,
                   right: 0,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Address text and button combined without spaces
-                        Container(
-                          padding: const EdgeInsets.all(0),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(8.0),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.grey.withOpacity(0.5),
-                                spreadRadius: 3,
-                                blurRadius: 5,
-                                offset: const Offset(0, 3),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            children: [
-                              Text(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: double.infinity,
+                        color: Colors.white,
+                        child: Column(
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Text(
                                 mapProvider.remoteAddress ?? 'Enter address',
                                 textAlign: TextAlign.center,
                                 style: const TextStyle(
-                                  fontSize: 18.0, // Larger text size
+                                  fontSize: 18.0,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.black,
                                 ),
                               ),
-                              ElevatedButton(
+                            ),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
                                 onPressed: onButtonPressed,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.blue, // Modern color scheme
+                                  backgroundColor: Colors.green,
                                   shape: const RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.only(
-                                      bottomLeft: Radius.circular(8.0),
-                                      bottomRight: Radius.circular(8.0),
-                                    ), // Rounded corners for the button
+                                    borderRadius: BorderRadius.zero,
                                   ),
-                                  padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 110), // Larger button
+                                  padding: const EdgeInsets.symmetric(vertical: 20),
                                 ),
                                 child: const Text(
                                   'Select Location',
-                                  style: TextStyle(fontSize: 18, color: Colors.white), // Larger text size
+                                  style: TextStyle(fontSize: 18, color: Colors.white),
                                 ),
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
             ],
