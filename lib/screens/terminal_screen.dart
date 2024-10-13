@@ -170,7 +170,7 @@ class _TerminalScreenState extends State<TerminalScreen> {
     print("Generated document ID: $documentId");
 
     // Store the document ID in the state
-    setState(() {
+    setState(() { 
       _tripDocumentId = documentId;
     });
 
