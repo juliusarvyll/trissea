@@ -97,52 +97,66 @@ class AuthServices {
   }
 
 
-  Future<bool> createAccount({
+
+Future<bool> createAccount({
   required String? firstName,
   required String? lastName,
   required String? email,
   required String? password,
-  UserProvider? userProvider,
-  BuildContext? context,
+  required UserProvider userProvider,  // Remove optional
+  required BuildContext context,       // Remove optional
 }) async {
   if (kDebugMode) {
     print(email);
     print(password);
   }
 
+  // Validate required fields
+  if (email == null || password == null || firstName == null || lastName == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('All fields are required'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+    return false;
+  }
+
   String username = '$firstName $lastName';
 
   try {
-    UserCredential userData = await _auth.createUserWithEmailAndPassword(
-      email: email!,
-      password: password!,
+    UserCredential userData = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      email: email,
+      password: password,
     );
+
+    if (userData.user == null) {
+      throw Exception('Failed to create user');
+    }
 
     await userData.user!.sendEmailVerification();
-    await setDisplayName(username , userProvider);
+    await setDisplayName(username, userProvider);
 
-    await _db.storeUser(
-      user.User(
-        id: userData.user!.uid,
-        passengerName: username,
-        firstName: firstName,
-        lastName: lastName,
-        email: email,
-        password: password,
-      ),
-    );
-    userProvider!.setUser(
-      user.User(
-        id: userData.user!.uid,
-        email: email,
-        passengerName: username,
-        password: password,
-      ),
+    final newUser = user.User(
+      id: userData.user!.uid,
+      passengerName: username,
+      firstName: firstName,
+      lastName: lastName,
+      email: email,
+      password: password,
     );
 
-    // Show success SnackBar
-    ScaffoldMessenger.of(context!).showSnackBar(
-      SnackBar(
+    await _db.storeUser(newUser);
+
+    userProvider.setUser(user.User(
+      id: userData.user!.uid,
+      email: email,
+      passengerName: username,
+      password: password,
+    ));
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
         content: Text('Account created successfully!'),
         duration: Duration(seconds: 2),
       ),
@@ -154,8 +168,7 @@ class AuthServices {
       print(e.toString());
     }
 
-    // Show error SnackBar
-    ScaffoldMessenger.of(context!).showSnackBar(
+    ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Failed to create account. ${e.toString()}'),
         duration: Duration(seconds: 2),

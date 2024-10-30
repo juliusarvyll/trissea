@@ -15,6 +15,7 @@ import '../models/trip_model.dart';
 import '../models/user_model.dart';
 import '../services/database_service.dart';
 import '../services/location_service.dart';
+import 'package:flutter_polyline_points/flutter_polyline_points.dart' as travel_mode;
 
 class MapProvider with ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -260,7 +261,7 @@ Future<void> setDeviceLocationAddress(double latitude, double longitude) async {
   void onTap(LatLng pos) async {
     if (mapAction == MapAction.selectTrip ||
         mapAction == MapAction.tripSelected) {
-          
+
       if (kDebugMode) {
         print(mapAction);
       }
@@ -278,27 +279,7 @@ Future<void> setDeviceLocationAddress(double latitude, double longitude) async {
       });
     }
   }
-  void setFinalLocation(LatLng pos) async {
-    if (mapAction == MapAction.selectTrip ||
-        mapAction == MapAction.tripSelected) {
-      if (kDebugMode) {
-        print(mapAction);
-      }
-      addFinalMarker(pos, _selectionPin!);
-      notifyListeners();
-      Future.delayed(const Duration(milliseconds: 500), () async {
-        await setFinalAddress(pos);
 
-        if (_remoteLocation != null || _finalLocation != null) {
-          List<PolylineResult> polylineResult = await setPolylineFinal();
-           calculateDistanceFinal(polylineResult);
-          calculateCost();
-        }
-
-        notifyListeners();
-      });
-    }
-  }
 
 
   void listenToPositionStream() {
@@ -404,10 +385,12 @@ Future<void> setDeviceLocationAddress(double latitude, double longitude) async {
     _polylines!.clear();
 
     PolylineResult result = await PolylinePoints().getRouteBetweenCoordinates(
-      googleMapApi,
-      PointLatLng(remotePoint.latitude, remotePoint.longitude),
-      PointLatLng(_deviceLocation!.latitude, _deviceLocation!.longitude),
-    );
+      googleApiKey: googleMapApi,
+      request: PolylineRequest(
+      destination: PointLatLng(remotePoint.latitude, remotePoint.longitude),
+      origin: PointLatLng(_deviceLocation!.latitude, _deviceLocation!.longitude),
+      mode: travel_mode.TravelMode.driving
+    ));
 
     if (result.points.isNotEmpty) {
       final String polylineId = const Uuid().v4();
@@ -424,75 +407,17 @@ Future<void> setDeviceLocationAddress(double latitude, double longitude) async {
         ),
       );
     }
-
     return result;
   }
 
-  Future<List<PolylineResult>> setPolylineFinal() async {
-  _polylines!.clear();
-
-  // Add polylines for device to remote and remote to final locations
-  PolylineResult result1 = await PolylinePoints().getRouteBetweenCoordinates(
-    googleMapApi,
-    PointLatLng(_deviceLocation!.latitude, _deviceLocation!.longitude),
-    PointLatLng(_remoteLocation!.latitude, _remoteLocation!.longitude),
-  );
-
-  PolylineResult result2 = await PolylinePoints().getRouteBetweenCoordinates(
-    googleMapApi,
-    PointLatLng(_remoteLocation!.latitude, _remoteLocation!.longitude),
-    PointLatLng(_finalLocation!.latitude, _finalLocation!.longitude),
-  );
-
-  // Add polyline for device to remote location
-  if (result1.points.isNotEmpty) {
-    final String polylineId1 = const Uuid().v4();
-    _polylines!.add(
-      Polyline(
-        polylineId: PolylineId(polylineId1),
-        color: Colors.black,
-        points: result1.points
-            .map((PointLatLng point) => LatLng(point.latitude, point.longitude))
-            .toList(),
-        width: 4,
-      ),
-    );
-  }
-
-  // Add polyline for remote to final location
-  if (result2.points.isNotEmpty) {
-    final String polylineId2 = const Uuid().v4();
-    _polylines!.add(
-      Polyline(
-        polylineId: PolylineId(polylineId2),
-        color: Colors.black,
-        points: result2.points
-            .map((PointLatLng point) => LatLng(point.latitude, point.longitude))
-            .toList(),
-        width: 4,
-      ),
-    );
-  }
-  if (kDebugMode) {
-    print("polylines: $_polylines");
-  }
-  return [result1, result2];
-}
 
 
 
   Future<void> updateRoutes() async {
-    if(_finalLocation == null){
     PolylineResult result = await setPolyline(_remoteLocation!);
     if (_remoteLocation != null) {
       calculateDistance(result.points);
       notifyListeners();
-    }
-    }else{
-      List<PolylineResult> polylineResult = await setPolylineFinal();
-           calculateDistanceFinal(polylineResult);
-          calculateCost();
-
     }
   }
 
@@ -502,29 +427,29 @@ Future<void> setDeviceLocationAddress(double latitude, double longitude) async {
   const bool isDebugMode = true;
   final api = GoogleGeocodingApi(googleMapApi, isLogged: isDebugMode);
   addMarker(pos, _selectionPin!);
-  
+
   try {
     final reversedSearchResults = await api.reverse(
       '${pos.latitude},${pos.longitude}',
     );
 
     final remoteFormattedAddress = reversedSearchResults.results.firstOrNull?.mapToPretty();
-    
+
     // Check if street name is null
     if (remoteFormattedAddress?.streetName == null) {
       LatLng adjustedPos = pos;
       bool foundStreet = false;
-      
+
       // Loop to adjust coordinates and find the nearest street
       while (!foundStreet) { // Limiting iterations to prevent infinite loop
         // Adjust coordinates
         adjustedPos = LatLng(adjustedPos.latitude + 0.001, adjustedPos.longitude + 0.001);
-        
+
         // Make a reverse geocoding request with adjusted coordinates
         final adjustedReversedSearchResults = await api.reverse(
           '${adjustedPos.latitude},${adjustedPos.longitude}',
         );
-        
+
         // Get formatted address from the adjusted results
         final adjustedRemoteFormattedAddress = adjustedReversedSearchResults.results.firstOrNull?.mapToPretty();
 
@@ -557,35 +482,35 @@ Future<void> setDeviceLocationAddress(double latitude, double longitude) async {
 }
 
 
-  
+
   Future<void> setFinalAddress(LatLng pos) async {
     _finalLocation = pos;
 
     const bool isDebugMode = true;
   final api = GoogleGeocodingApi(googleMapApi, isLogged: isDebugMode);
-  
+
   try {
     final reversedSearchResults = await api.reverse(
       '${pos.latitude},${pos.longitude}',
     );
 
     final remoteFormattedAddress = reversedSearchResults.results.firstOrNull?.mapToPretty();
-    
+
     // Check if street name is null
     if (remoteFormattedAddress?.streetName == null) {
       LatLng adjustedPos = pos;
       bool foundStreet = false;
-      
+
       // Loop to adjust coordinates and find the nearest street
       while (!foundStreet) {
         // Adjust coordinates
         adjustedPos = LatLng(adjustedPos.latitude + 0.011, adjustedPos.longitude + 0.011);
-        
+
         // Make a reverse geocoding request with adjusted coordinates
         final adjustedReversedSearchResults = await api.reverse(
           '${adjustedPos.latitude},${adjustedPos.longitude}',
         );
-        
+
         // Get formatted address from the adjusted results
         final adjustedRemoteFormattedAddress = adjustedReversedSearchResults.results.firstOrNull?.mapToPretty();
 

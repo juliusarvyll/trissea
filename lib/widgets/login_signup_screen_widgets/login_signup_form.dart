@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:trissea/main.dart';
 import 'package:trissea/screens/map_screen.dart';
 
 import '../../providers/user_provider.dart';
