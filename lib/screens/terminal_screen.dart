@@ -10,6 +10,7 @@ import 'package:trissea/widgets/terminal_screen_widgets/accepted_request.dart';
 import 'package:trissea/widgets/terminal_screen_widgets/pay_driver_terminal.dart';
 import 'package:trissea/widgets/terminal_screen_widgets/search_terminal.dart';
 import 'package:trissea/widgets/terminal_screen_widgets/terminal_trip_start.dart';
+import 'dart:async';
 
 class TerminalScreen extends StatefulWidget {
   const TerminalScreen({Key? key}) : super(key: key);
@@ -19,21 +20,94 @@ class TerminalScreen extends StatefulWidget {
   State<TerminalScreen> createState() => _TerminalScreenState();
 }
 
-class _TerminalScreenState extends State<TerminalScreen> {
+class _TerminalScreenState extends State<TerminalScreen> with AutomaticKeepAliveClientMixin {
+  final List<StreamSubscription> _subscriptions = [];
   final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
-  MapProvider? _mapProvider;
-  bool _showBookingDialog = false;
-  String? _tripDocumentId; // Add this line
+  late MapProvider _mapProvider;
+  String? _tripDocumentId;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
     super.initState();
     _mapProvider = Provider.of<MapProvider>(context, listen: false);
-    _mapProvider!.changeMapAction(MapAction.selectTerminal);
+  }
+
+  @override
+  void dispose() {
+    // Only reset MapAction if there's no active trip
+    if (_tripDocumentId == null) {
+      _mapProvider.changeMapAction(MapAction.selectTrip);
+    }
+    
+    for (var subscription in _subscriptions) {
+      subscription.cancel();
+    }
+    super.dispose();
+  }
+
+  void _setupTripListeners(String documentId) {
+    final tripRef = FirebaseFirestore.instance.collection('TerminalTrips').doc(documentId);
+    
+    final subscription = tripRef.snapshots().listen((snapshot) {
+      if (!snapshot.exists) return;
+      
+      final data = snapshot.data();
+      if (data == null) return;
+
+      _handleTripStateChange(data);
+    });
+
+    _subscriptions.add(subscription);
+  }
+
+  void _handleTripStateChange(Map<String, dynamic> data) {
+    if (data['paid'] == true) {
+      _mapProvider.changeMapAction(MapAction.searchTerminal);
+    } else if (data['ended'] == true) {
+      _mapProvider.changeMapAction(MapAction.endedTerminalTrip);
+    } else if (data['started'] == true) {
+      _mapProvider.changeMapAction(MapAction.startTerminalTrip);
+    } else if (data['accepted'] == true) {
+      _mapProvider.changeMapAction(MapAction.acceptedRequest);
+    }
+  }
+
+  Future<void> _processBooking(Map<String, dynamic> terminalData, int cost, User currentUser) async {
+    final String documentId = FirebaseFirestore.instance.collection('TerminalTrips').doc().id;
+    
+    setState(() => _tripDocumentId = documentId);
+
+    final terminalTrip = TerminalTrip(
+      id: documentId,
+      terminalName: terminalData['name'] ?? 'No Name',
+      location: terminalData['location'] ?? 'No Location',
+      passengerId: currentUser.uid,
+      passengerName: currentUser.displayName ?? 'Anonymous',
+      cost: cost,
+      timestamp: Timestamp.now(),
+      accepted: false,
+      ended: false,
+    );
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('TerminalTrips')
+          .doc(documentId)
+          .set(terminalTrip.toMap());
+      
+      _setupTripListeners(documentId);
+      _mapProvider.changeMapAction(MapAction.searchTerminal);
+    } catch (e) {
+      debugPrint('Error processing booking: $e');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return Consumer<MapProvider>(
       builder: (BuildContext context, MapProvider mapProvider, _) {
         _mapProvider = mapProvider;
@@ -85,7 +159,6 @@ class _TerminalScreenState extends State<TerminalScreen> {
                           subtitle: Text(data['location'] ?? 'No Location'),
                           trailing: const Icon(Icons.arrow_forward),
                           onTap: () {
-                            _showBookingDialog = true;
                             _showBookingOptionsDialog(data);
                           },
                         ),
@@ -97,33 +170,12 @@ class _TerminalScreenState extends State<TerminalScreen> {
               Positioned(
                 left: 0,
                 right: 0,
-                bottom: 100,
-                child: SearchTerminal(mapProvider: mapProvider),
+                bottom: 0,
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 300),
+                  child: _buildCurrentWidget(mapProvider),
+                ),
               ),
-              if (_tripDocumentId != null)
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 100,
-                  child: AcceptedRequest(
-                    mapProvider: mapProvider,
-                    tripDocumentId: _tripDocumentId!,
-                  ),
-                ),
-              if (_tripDocumentId != null && _mapProvider?.mapAction == MapAction.startTerminalTrip)
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 100,
-                  child: TerminalTripStarted(mapProvider: mapProvider, tripDocumentId: _tripDocumentId!),
-                ),
-              if (_tripDocumentId != null && _mapProvider?.mapAction == MapAction.endedTerminalTrip)
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 100,
-                  child: PayDriverTerminal(mapProvider: mapProvider, tripDocumentId: _tripDocumentId!),
-                ),
             ],
           ),
         );
@@ -163,151 +215,108 @@ class _TerminalScreenState extends State<TerminalScreen> {
   void _handleBooking(Map<String, dynamic> terminalData, int cost) {
     User? currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) {
-      // Handle user not signed in
       Navigator.of(context).push(MaterialPageRoute(builder: (context) => const LoginSignupScreen()));
       return;
     }
-    String passengerId = currentUser.uid;
-    String passengerName = currentUser.displayName ?? 'Anonymous';
 
-    print("Passenger ID: $passengerId");
-
-    // Generate a unique ID for the document
-    String documentId = FirebaseFirestore.instance.collection('TerminalTrips').doc().id;
-    print("Generated document ID: $documentId");
-
-    // Store the document ID in the state
-    setState(() {
-      _tripDocumentId = documentId;
-    });
-
-    // Create a TerminalTrip object with document ID
-    TerminalTrip terminalTrip = TerminalTrip(
-      id: documentId,
-      terminalName: terminalData['name'] ?? 'No Name',
-      location: terminalData['location'] ?? 'No Location',
-      passengerId: passengerId,
-      passengerName: passengerName,
-      cost: cost,
-      timestamp: Timestamp.now(),
-      accepted: false, // Set initial status as Pending
-      ended: false,
-    );
-
-    print("TerminalTrip object created: ${terminalTrip.toMap()}");
-
-    // Add the TerminalTrip object to Firestore
-    FirebaseFirestore.instance.collection('TerminalTrips').doc(documentId).set(terminalTrip.toMap()).then((value) {
-      // Listen for acceptance for this specific document ID
-      _listenForRequestAcceptance(documentId);
-      _listenForTripStart(documentId);
-      _listenForTripEnded(documentId);
-      _listenForTripPaid(documentId);
-
-      // After adding the details, change the map action if _mapProvider is not null
-      if (_mapProvider != null) {
-        _mapProvider!.changeMapAction(MapAction.searchTerminal);
-        Navigator.of(context).pop();
-        if (_showBookingDialog) {
-          _showBookingDialog = false;
-          showDialog(
-            context: context,
-            builder: (BuildContext context) {
-              return AlertDialog(
-                title: Text('Booking Details'),
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      terminalData['name'] ?? 'No Name',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    Text('Location: ${terminalData['location'] ?? 'No Location'}'),
-                    Text('Cost: ₱${cost.toString()}'),
-                  ],
+    Navigator.of(context).pop(); // Close the booking options dialog
+    
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Confirm Booking Details'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                terminalData['name'] ?? 'No Name',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
                 ),
-                actions: <Widget>[
-                  TextButton(
-                    child: Text('Close'),
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                    },
+              ),
+              SizedBox(height: 12),
+              Row(
+                children: [
+                  Icon(Icons.location_on, size: 16, color: Colors.grey),
+                  SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      terminalData['location'] ?? 'No Location',
+                      style: TextStyle(color: Colors.grey[600]),
+                    ),
                   ),
                 ],
-              );
-            },
-          );
-        }
-      }
-    });
+              ),
+              SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(Icons.payment, size: 16, color: Colors.grey),
+                  SizedBox(width: 4),
+                  Text(
+                    'Cost: ₱${cost.toString()}',
+                    style: TextStyle(
+                      color: Colors.green,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Cancel'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              ),
+              child: Text('Confirm Booking', style: TextStyle(color: Colors.white)),
+              onPressed: () {
+                Navigator.of(context).pop();
+                _processBooking(terminalData, cost, currentUser);
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
-  void _listenForRequestAcceptance(String documentId) {
-    FirebaseFirestore.instance
-        .collection('TerminalTrips')
-        .doc(documentId)
-        .snapshots()
-        .listen((snapshot) {
-      var data = snapshot.data();
-      if (data != null && data['accepted'] == true) {
-        setState(() {
-          _mapProvider?.changeMapAction(MapAction.acceptedRequest);
-          print('mapAction: ${_mapProvider?.mapAction}');
-        });
-      }
-    });
-  }
-
-  void _listenForTripEnded(String documentId) {
-    FirebaseFirestore.instance
-        .collection('TerminalTrips')
-        .doc(documentId)
-        .snapshots()
-        .listen((snapshot) {
-      var data = snapshot.data();
-      if (data != null && data['ended'] == true) {
-        setState(() {
-          _mapProvider?.changeMapAction(MapAction.endedTerminalTrip);
-          print('mapAction: ${_mapProvider?.mapAction}');
-        });
-      }
-    });
-  }
-
-  void _listenForTripPaid(String documentId) {
-    FirebaseFirestore.instance
-        .collection('TerminalTrips')
-        .doc(documentId)
-        .snapshots()
-        .listen((snapshot) {
-      var data = snapshot.data();
-      if (data != null && data['paid'] == true) {
-        setState(() {
-          _mapProvider?.changeMapAction(MapAction.searchTerminal);
-          print('mapAction: ${_mapProvider?.mapAction}');
-        });
-      }
-    });
-  }
-
-  void _listenForTripStart(String documentId) {
-    FirebaseFirestore.instance
-        .collection('TerminalTrips')
-        .doc(documentId)
-        .snapshots()
-        .listen((snapshot) {
-      var data = snapshot.data();
-      if (data != null && data['started'] == true) {
-        setState(() {
-          _mapProvider?.changeMapAction(MapAction.startTerminalTrip);
-          print('mapAction: ${_mapProvider?.mapAction}');
-        });
-      }
-    });
+  Widget _buildCurrentWidget(MapProvider mapProvider) {
+    if (_tripDocumentId == null) {
+      return const SizedBox.shrink();
+    }
+    switch (mapProvider.mapAction) {
+      case MapAction.searchTerminal:
+        return SearchTerminal(
+          mapProvider: mapProvider,
+          tripDocumentId: _tripDocumentId!,
+        );
+      case MapAction.acceptedRequest:
+        return AcceptedRequest(
+          mapProvider: mapProvider,
+          tripDocumentId: _tripDocumentId!,
+        );
+      case MapAction.startTerminalTrip:
+        return TerminalTripStarted(
+          mapProvider: mapProvider,
+          tripDocumentId: _tripDocumentId!,
+        );
+      case MapAction.endedTerminalTrip:
+        return PayDriverTerminal(
+          mapProvider: mapProvider,
+          tripDocumentId: _tripDocumentId!,
+        );
+      default:
+        return const SizedBox.shrink();
+    }
   }
 }

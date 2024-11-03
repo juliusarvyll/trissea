@@ -41,67 +41,89 @@ class _LoginFormState extends State<LoginForm>
   }
 
   Future<void> _authenticate(BuildContext context) async {
-  final UserProvider userProvider = Provider.of<UserProvider>(
-    context,
-    listen: false,
-  );
-
-  _formKey.currentState!.save();
-
-  setState(() {
-    _isLoading = true; // Set loading state to true when authentication starts
-  });
-
-  if (authMode == AuthMode.login) {
-    bool isAuthenticated = await _auth.login(
-      email: _email,
-      firstName: _firstName,
-      lastName: _lastName,
-      password: _password,
-      userProvider: userProvider,
-      context: context,
-    );
-
-    if (isAuthenticated) {
-      Navigator.of(context).pushReplacementNamed(MapScreen.route);
+    // Validate form first
+    if (!_formKey.currentState!.validate()) {
+      return;
     }
-  } else {
-    bool isAccountCreated = await _auth.createAccount(
-      firstName: _firstName,
-      lastName: _lastName,
-      email: _email,
-      password: _password,
-      userProvider: userProvider,
-      context: context, // Pass context here
+
+    final UserProvider userProvider = Provider.of<UserProvider>(
+      context,
+      listen: false,
     );
 
-    if (isAccountCreated) {
+    _formKey.currentState!.save();
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      if (authMode == AuthMode.login) {
+        bool isAuthenticated = await _auth.login(
+          email: _email.trim(),
+          firstName: _firstName,
+          lastName: _lastName,
+          password: _password,
+          userProvider: userProvider,
+          context: context,
+        );
+
+        if (isAuthenticated && mounted) {
+          Navigator.of(context).pushReplacementNamed(MapScreen.route);
+        }
+      } else {
+        bool isAccountCreated = await _auth.createAccount(
+          firstName: _firstName.trim(),
+          lastName: _lastName.trim(),
+          email: _email.trim(),
+          password: _password,
+          userProvider: userProvider,
+          context: context,
+        );
+
+        if (isAccountCreated && mounted) {
+          // Show verification email sent dialog
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Account Created'),
+              content: const Text('Please check your email to verify your account.'),
+              actions: [
+                TextButton(
+                  child: const Text('OK'),
+                  onPressed: () {
+                    Navigator.of(ctx).pop();
+                    setState(() => authMode = AuthMode.login);
+                  },
+                ),
+              ],
+            ),
+          );
+        }
+      }
+    } catch (error) {
+      // Show error dialog
       showDialog(
         context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: const Text('Account Created'),
-            content: const Text('Your account has been created. Please check your email for verification'),
-            actions: <Widget>[
-              TextButton(
-                child: const Text('OK'),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-              ),
-            ],
-          );
-        },
+        builder: (ctx) => AlertDialog(
+          title: const Text('Authentication Error'),
+          content: Text(error.toString()),
+          actions: [
+            TextButton(
+              child: const Text('OK'),
+              onPressed: () => Navigator.of(ctx).pop(),
+            ),
+          ],
+        ),
       );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
-
-  setState(() {
-    _isLoading = false; // Set loading state to false when authentication finishes
-  });
-}
-
-
 
   @override
   void initState() {
@@ -137,12 +159,16 @@ class _LoginFormState extends State<LoginForm>
                   title: 'First Name',
                   handler: (String? value) => _firstName = value!,
                   icon: Icons.account_circle,
+                  authMode: authMode,
+                  fieldType: FieldType.firstName,
                 ),
                 const SizedBox(height: 15),
                 InputTextField(
                   title: 'Last Name',
                   handler: (String? value) => _lastName = value!,
                   icon: Icons.account_circle,
+                  authMode: authMode,
+                  fieldType: FieldType.lastName,
                 ),
                 const SizedBox(height: 15),
               ],
@@ -152,6 +178,8 @@ class _LoginFormState extends State<LoginForm>
             title: 'Email',
             handler: (String? value) => _email = value!,
             icon: Icons.email,
+            authMode: authMode,
+            fieldType: FieldType.email,
           ),
           const SizedBox(height: 15),
           InputTextField(
@@ -159,6 +187,8 @@ class _LoginFormState extends State<LoginForm>
             handler: (String? value) => _password = value!,
             icon: Icons.key,
             password: true,
+            authMode: authMode,
+            fieldType: FieldType.password,
           ),
           const SizedBox(height: 15),
           _isLoading

@@ -2,13 +2,22 @@ import 'package:flutter/material.dart';
 import '../models/trip_model.dart';
 import '../services/database_service.dart';
 
-class TripsScreen extends StatelessWidget {
+class TripsScreen extends StatefulWidget {
   const TripsScreen({Key? key}) : super(key: key);
 
   static const String route = '/trips';
 
   @override
+  State<TripsScreen> createState() => _TripsScreenState();
+}
+
+class _TripsScreenState extends State<TripsScreen> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
   Widget build(BuildContext context) {
+    super.build(context);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Trip History', style: TextStyle(color: Colors.white)),

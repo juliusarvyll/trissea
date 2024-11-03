@@ -11,6 +11,7 @@ import 'package:trissea/widgets/map_screen_widgets/trip_started.dart';
 import 'package:trissea/widgets/map_screen_widgets/reached_destination.dart';
 import 'package:trissea/widgets/map_screen_widgets/feedback.dart';
 import 'package:trissea/screens/search_bar.dart';
+import 'dart:async';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({Key? key}) : super(key: key);
@@ -21,18 +22,30 @@ class MapScreen extends StatefulWidget {
   State<MapScreen> createState() => _MapScreenState();
 }
 
-class _MapScreenState extends State<MapScreen> {
-  LatLng _draggedLatlng = const LatLng(0.0, 0.0); // Initialized with a default value
-  MapProvider? _mapProvider;
+class _MapScreenState extends State<MapScreen> with AutomaticKeepAliveClientMixin {
+  LatLng _draggedLatlng = const LatLng(0.0, 0.0);
+  Timer? _debounceTimer;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  MapProvider? _mapProvider;
 
   @override
   void initState() {
     super.initState();
     _mapProvider = Provider.of<MapProvider>(context, listen: false);
-    _mapProvider!.setScaffoldKey(_scaffoldKey);
-    _mapProvider!.initializeMap(scaffoldKey: _scaffoldKey);
-    _mapProvider!.changeMapAction(MapAction.selectTrip);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _mapProvider?.setScaffoldKey(_scaffoldKey);
+      _mapProvider?.initializeMap(scaffoldKey: _scaffoldKey);
+    });
+  }
+
+  @override
+  void dispose() {
+    if (_mapProvider?.ongoingTrip == null) {
+      _mapProvider?.changeMapAction(MapAction.selectTrip);
+    }
+    
+    _debounceTimer?.cancel();
+    super.dispose();
   }
 
   void onButtonPressed() {
@@ -40,22 +53,29 @@ class _MapScreenState extends State<MapScreen> {
     _mapProvider!.onTap(_draggedLatlng);
   }
 
-  void getMarkerPosition(CameraPosition cameraPosition) async {
+  void getMarkerPosition(CameraPosition cameraPosition) {
     setState(() {
       _draggedLatlng = cameraPosition.target;
     });
   }
 
-  void updateMarkerPosition() async {
-    await _mapProvider!.setRemoteAddress(_draggedLatlng);
+  void updateMarkerPosition() {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () async {
+      if (_mapProvider?.mapAction == MapAction.selectTrip) {
+        await _mapProvider?.setRemoteAddress(_draggedLatlng);
+      }
+    });
   }
 
   @override
+  bool get wantKeepAlive => true;
+
+  @override
   Widget build(BuildContext context) {
+    super.build(context);
     return Consumer<MapProvider>(
       builder: (BuildContext context, mapProvider, _) {
-        _mapProvider = mapProvider;
-
         return Scaffold(
           key: _scaffoldKey,
           drawer: const CustomSideDrawer(),
@@ -71,9 +91,7 @@ class _MapScreenState extends State<MapScreen> {
                               ? GoogleMap(
                                   myLocationEnabled: true,
                                   myLocationButtonEnabled: true,
-                                  onMapCreated: (GoogleMapController controller) {
-                                    mapProvider.onMapCreated(controller);
-                                  },
+                                  onMapCreated: mapProvider.onMapCreated,
                                   initialCameraPosition: mapProvider.cameraPos!,
                                   compassEnabled: true,
                                   onCameraMove: getMarkerPosition,

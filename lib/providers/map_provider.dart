@@ -52,6 +52,9 @@ class MapProvider with ChangeNotifier {
   StreamSubscription<User>? _driverStream;
   StreamSubscription<Position>? _positionStream;
   bool _driverArrivingInit = false;
+  Timer? _geocodingDebounceTimer;
+  bool _isAddressSet = false;
+  Timer? _deviceAddressDebounceTimer;
 
   GlobalKey<ScaffoldState>? get scaffoldKey => _scaffoldKey;
   CameraPosition? get cameraPos => _cameraPos;
@@ -131,102 +134,99 @@ class MapProvider with ChangeNotifier {
   }
 
   Future<void> initializeMap({GlobalKey<ScaffoldState>? scaffoldKey}) async {
-  Position? deviceLocation;
-  LatLng? cameraLatLng;
+    Position? deviceLocation;
+    LatLng? cameraLatLng;
 
-  // Ensure scaffoldKey is not null before using it
-  if (scaffoldKey != null) {
-    setScaffoldKey(scaffoldKey);
 
-    if (kDebugMode) {
-      print('scaffold: $scaffoldKey');
-    }
+      setScaffoldKey(scaffoldKey!);
 
-    if (await _locationService.checkLocationIfPermanentlyDisabled()) {
-      // Use the scaffoldKey safely
-      showDialog(
-        context: scaffoldKey.currentContext!,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            content: const Text(
-              'Location permission is permanently disabled. Enable it from app settings',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Geolocator.openAppSettings(),
-                child: const Text('Open App Settings'),
-              ),
-            ],
+      if (await _locationService.checkLocationIfPermanentlyDisabled()) {
+        // Show dialog for permanently disabled location
+        if (scaffoldKey.currentContext != null) {
+          showDialog(
+            context: scaffoldKey.currentContext!,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                content: const Text(
+                  'Location permission is permanently disabled. Enable it from app settings',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Geolocator.openAppSettings(),
+                    child: const Text('Open App Settings'),
+                  ),
+                ],
+              );
+            },
           );
-        },
-      );
-    } else {
-      if (await _locationService.checkLocationPermission()) {
+        }
+      } else if (await _locationService.checkLocationPermission()) {
         try {
           deviceLocation = await _locationService.getLocation();
           cameraLatLng = LatLng(
             deviceLocation.latitude,
             deviceLocation.longitude,
           );
-          setDeviceLocation(deviceLocation);
-          setDeviceLocationAddress(
+          
+          // Batch state updates
+          await Future.microtask(() {
+            setDeviceLocation(deviceLocation!);
+            addMarkerPickup(cameraLatLng!, _personPin!);
+            setCameraPosition(cameraLatLng);
+            changeMapAction(MapAction.selectTrip);
+            
+            // Cancel existing stream before starting new one
+            _positionStream?.cancel();
+            listenToPositionStream();
+          });
+
+          // Handle address update separately
+          await setDeviceLocationAddress(
             deviceLocation.latitude,
             deviceLocation.longitude,
           );
-          addMarkerPickup(cameraLatLng, _personPin!);
-
-          // Cancel the position stream if it exists
-          _positionStream?.cancel();
-          // Listen to position stream after cancelation
-          listenToPositionStream();
         } catch (error) {
-          // Specific error handling can be added here
           if (kDebugMode) {
             print('Unable to get device location: $error');
           }
         }
       }
-    }
+
+    // Use default LatLng if deviceLocation is null
+    cameraLatLng ??= const LatLng(37.42227936982647, -122.08611108362673);
+    
+    // Set camera position
+    setCameraPosition(cameraLatLng);
   }
-
-  // Use default LatLng if deviceLocation is null
-  cameraLatLng ??= const LatLng(37.42227936982647, -122.08611108362673);
-
-  // Set camera position
-  setCameraPosition(cameraLatLng);
-
-  // Notify listeners after all necessary state updates
-  notifyListeners();
-}
-
 
   void setDeviceLocation(Position location) {
     _deviceLocation = location;
   }
 
-Future<void> setDeviceLocationAddress(double latitude, double longitude) async {
-  const bool isDebugMode = true;
-  final api = GoogleGeocodingApi(googleMapApi, isLogged: isDebugMode);
-  try {
-    final reversedSearchResults  = await api.reverse(
-      '$latitude,$longitude',
-    );
+  Future<void> setDeviceLocationAddress(double latitude, double longitude) async {
+    _deviceAddressDebounceTimer?.cancel();
+    _deviceAddressDebounceTimer = Timer(const Duration(seconds: 3), () async {
+      try {
+        const bool isDebugMode = true;
+        final api = GoogleGeocodingApi(googleMapApi, isLogged: isDebugMode);
+        
+        final reversedSearchResults = await api.reverse(
+          '$latitude,$longitude',
+        );
 
-      final formattedAddress = reversedSearchResults.results.firstOrNull?.mapToPretty();
-
-      if (kDebugMode) {
-        print('formattedAddress: ${formattedAddress?.streetName}, ${formattedAddress?.city}');
+        final formattedAddress = reversedSearchResults.results.firstOrNull?.mapToPretty();
+        
+        if (formattedAddress != null) {
+          _deviceAddress = '${formattedAddress.streetName}, ${formattedAddress.city}';
+          notifyListeners();
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print('Error setting device address: $e');
+        }
       }
-      notifyListeners();
-  } catch (e) {
-    if (kDebugMode) {
-      print('Error: $e');
-    }
+    });
   }
-}
-
-
-
 
   void onMapCreated(GoogleMapController controller) {
     _controller = controller;
@@ -257,7 +257,6 @@ Future<void> setDeviceLocationAddress(double latitude, double longitude) async {
     );
   }
 
-
   void onTap(LatLng pos) async {
     if (mapAction == MapAction.selectTrip ||
         mapAction == MapAction.tripSelected) {
@@ -279,8 +278,6 @@ Future<void> setDeviceLocationAddress(double latitude, double longitude) async {
       });
     }
   }
-
-
 
   void listenToPositionStream() {
     _positionStream = LocationService().getRealtimeDeviceLocation().listen(
@@ -324,8 +321,6 @@ Future<void> setDeviceLocationAddress(double latitude, double longitude) async {
     _markersPickup!.add(newMarker);
     _pickupMarker = newMarker;
   }
-
-  // Other functions with null safety checks and error handling...
 
   void addMarker(
     LatLng latLng,
@@ -410,9 +405,6 @@ Future<void> setDeviceLocationAddress(double latitude, double longitude) async {
     return result;
   }
 
-
-
-
   Future<void> updateRoutes() async {
     PolylineResult result = await setPolyline(_remoteLocation!);
     if (_remoteLocation != null) {
@@ -422,124 +414,90 @@ Future<void> setDeviceLocationAddress(double latitude, double longitude) async {
   }
 
   Future<void> setRemoteAddress(LatLng pos) async {
-  _remoteLocation = pos;
+    if (_isAddressSet && _remoteLocation == pos) {
+      return;
+    }
 
-  const bool isDebugMode = true;
-  final api = GoogleGeocodingApi(googleMapApi, isLogged: isDebugMode);
-  addMarker(pos, _selectionPin!);
-
-  try {
-    final reversedSearchResults = await api.reverse(
-      '${pos.latitude},${pos.longitude}',
-    );
-
-    final remoteFormattedAddress = reversedSearchResults.results.firstOrNull?.mapToPretty();
-
-    // Check if street name is null
-    if (remoteFormattedAddress?.streetName == null) {
-      LatLng adjustedPos = pos;
-      bool foundStreet = false;
-
-      // Loop to adjust coordinates and find the nearest street
-      while (!foundStreet) { // Limiting iterations to prevent infinite loop
-        // Adjust coordinates
-        adjustedPos = LatLng(adjustedPos.latitude + 0.001, adjustedPos.longitude + 0.001);
-
-        // Make a reverse geocoding request with adjusted coordinates
-        final adjustedReversedSearchResults = await api.reverse(
-          '${adjustedPos.latitude},${adjustedPos.longitude}',
+    _remoteLocation = pos;
+    addMarker(pos, _selectionPin!);
+    
+    _geocodingDebounceTimer?.cancel();
+    _geocodingDebounceTimer = Timer(const Duration(milliseconds: 500), () async {
+      try {
+        const bool isDebugMode = true;
+        final api = GoogleGeocodingApi(googleMapApi, isLogged: isDebugMode);
+        
+        final reversedSearchResults = await api.reverse(
+          '${pos.latitude},${pos.longitude}',
         );
 
-        // Get formatted address from the adjusted results
-        final adjustedRemoteFormattedAddress = adjustedReversedSearchResults.results.firstOrNull?.mapToPretty();
-
-        // Check if street name is found
-        if (adjustedRemoteFormattedAddress?.streetName != null) {
-          _remoteAddress = "Near ${adjustedRemoteFormattedAddress?.streetName}";
-          foundStreet = true;
+        final remoteFormattedAddress = reversedSearchResults.results.firstOrNull?.mapToPretty();
+        
+        if (remoteFormattedAddress != null) {
+          String streetNumber = remoteFormattedAddress.streetNumber ?? '';
+          String streetName = remoteFormattedAddress.streetName ?? 'Unknown Street';
+          String city = remoteFormattedAddress.city ?? '';
+          
+          _remoteAddress = '$streetNumber $streetName, $city'.trim();
+          _isAddressSet = true;
+          notifyListeners();
         }
+      } catch (e) {
+        if (kDebugMode) {
+          print('Error setting remote address: $e');
+        }
+        _remoteAddress = 'Location not found';
+        notifyListeners();
       }
-    } else {
-      // Street name is found in the original results
-      _remoteAddress = remoteFormattedAddress?.streetName ?? '';
-    }
-
-    // Concatenate street number and city
-    String streetNumber = remoteFormattedAddress?.streetNumber ?? '';
-    String city = remoteFormattedAddress?.city ?? '';
-
-    _remoteAddress = '$streetNumber $_remoteAddress, $city';
-
-    if (kDebugMode) {
-      print('remoteFormattedAddress: ${remoteFormattedAddress?.streetName}, ${remoteFormattedAddress?.city}');
-    }
-    notifyListeners();
-  } catch (e) {
-    if (kDebugMode) {
-      print('Error: $e');
-    }
+    });
   }
-}
-
-
 
   Future<void> setFinalAddress(LatLng pos) async {
     _finalLocation = pos;
 
     const bool isDebugMode = true;
-  final api = GoogleGeocodingApi(googleMapApi, isLogged: isDebugMode);
+    final api = GoogleGeocodingApi(googleMapApi, isLogged: isDebugMode);
 
-  try {
-    final reversedSearchResults = await api.reverse(
-      '${pos.latitude},${pos.longitude}',
-    );
+    try {
+      final reversedSearchResults = await api.reverse(
+        '${pos.latitude},${pos.longitude}',
+      );
 
-    final remoteFormattedAddress = reversedSearchResults.results.firstOrNull?.mapToPretty();
+      final remoteFormattedAddress = reversedSearchResults.results.firstOrNull?.mapToPretty();
 
-    // Check if street name is null
-    if (remoteFormattedAddress?.streetName == null) {
-      LatLng adjustedPos = pos;
-      bool foundStreet = false;
+      if (remoteFormattedAddress?.streetName == null) {
+        LatLng adjustedPos = pos;
+        bool foundStreet = false;
 
-      // Loop to adjust coordinates and find the nearest street
-      while (!foundStreet) {
-        // Adjust coordinates
-        adjustedPos = LatLng(adjustedPos.latitude + 0.011, adjustedPos.longitude + 0.011);
+        while (!foundStreet) {
+          adjustedPos = LatLng(adjustedPos.latitude + 0.011, adjustedPos.longitude + 0.011);
+          final adjustedReversedSearchResults = await api.reverse(
+            '${adjustedPos.latitude},${adjustedPos.longitude}',
+          );
+          final adjustedRemoteFormattedAddress = adjustedReversedSearchResults.results.firstOrNull?.mapToPretty();
 
-        // Make a reverse geocoding request with adjusted coordinates
-        final adjustedReversedSearchResults = await api.reverse(
-          '${adjustedPos.latitude},${adjustedPos.longitude}',
-        );
-
-        // Get formatted address from the adjusted results
-        final adjustedRemoteFormattedAddress = adjustedReversedSearchResults.results.firstOrNull?.mapToPretty();
-
-        // Check if street name is found
-        if (adjustedRemoteFormattedAddress?.streetName != null) {
-          _remoteAddress = adjustedRemoteFormattedAddress?.streetName ?? '';
-          foundStreet = true;
+          if (adjustedRemoteFormattedAddress?.streetName != null) {
+            _remoteAddress = adjustedRemoteFormattedAddress?.streetName ?? '';
+            foundStreet = true;
+          }
         }
+      } else {
+        _remoteAddress = remoteFormattedAddress?.streetName ?? '';
       }
-    } else {
-      // Street name is found in the original results
-      _remoteAddress = remoteFormattedAddress?.streetName ?? '';
-    }
 
-    // Concatenate street number and city
-    String streetNumber = remoteFormattedAddress?.streetNumber ?? '';
-    String city = remoteFormattedAddress?.city ?? '';
+      String streetNumber = remoteFormattedAddress?.streetNumber ?? '';
+      String city = remoteFormattedAddress?.city ?? '';
+      _remoteAddress = '$streetNumber $_remoteAddress, $city';
 
-    _remoteAddress = '$streetNumber $_remoteAddress, $city';
-
-    if (kDebugMode) {
-      print('remoteFormattedAddress: ${remoteFormattedAddress?.streetName}, ${remoteFormattedAddress?.city}');
+      if (kDebugMode) {
+        print('remoteFormattedAddress: ${remoteFormattedAddress?.streetName}, ${remoteFormattedAddress?.city}');
+      }
+      notifyListeners();
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error: $e');
+      }
     }
-    notifyListeners();
-  } catch (e) {
-    if (kDebugMode) {
-      print('Error: $e');
-    }
-  }
   }
 
   void calculateDistance(List<PointLatLng> points) {
@@ -558,28 +516,28 @@ Future<void> setDeviceLocationAddress(double latitude, double longitude) async {
   }
 
   void calculateDistanceFinal(List<PolylineResult> polylineResults) {
-  double distance = 0;
+    double distance = 0;
 
-  for (PolylineResult result in polylineResults) {
-    if (result.points.isNotEmpty) {
-      for (int i = 0; i < result.points.length - 1; i++) {
-        distance += Geolocator.distanceBetween(
-          result.points[i].latitude,
-          result.points[i].longitude,
-          result.points[i + 1].latitude,
-          result.points[i + 1].longitude,
-        );
+    for (PolylineResult result in polylineResults) {
+      if (result.points.isNotEmpty) {
+        for (int i = 0; i < result.points.length - 1; i++) {
+          distance += Geolocator.distanceBetween(
+            result.points[i].latitude,
+            result.points[i].longitude,
+            result.points[i + 1].latitude,
+            result.points[i + 1].longitude,
+          );
+        }
       }
     }
-  }
 
-  _distance = distance / 1000;
-}
+    _distance = distance / 1000;
+  }
 
   void calculateCost() {
     double calculatedCost = _distance! * 20;
     _cost = calculatedCost.clamp(20, 100);
-}
+  }
 
   void clearRoutes([bool shouldClearDistanceCost = true]) {
     _markers!.clear();
@@ -591,12 +549,14 @@ Future<void> setDeviceLocationAddress(double latitude, double longitude) async {
       _distance = null;
       _cost = null;
     }
+    _isAddressSet = false;
     clearRemoteAddress();
   }
 
   void clearRemoteAddress() {
     _remoteAddress = null;
     _remoteLocation = null;
+    _isAddressSet = false;
   }
   void clearFinalAddress() {
     _finalAddress = null;
@@ -999,5 +959,12 @@ Future<void> setDeviceLocationAddress(double latitude, double longitude) async {
 
   void animateCameraToPos(LatLng pos, [double zoom = 15]) {
     _controller!.animateCamera(CameraUpdate.newLatLngZoom(pos, zoom));
+  }
+
+  @override
+  void dispose() {
+    _geocodingDebounceTimer?.cancel();
+    _deviceAddressDebounceTimer?.cancel();
+    super.dispose();
   }
 }

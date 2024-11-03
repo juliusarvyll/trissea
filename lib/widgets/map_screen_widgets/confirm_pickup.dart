@@ -21,7 +21,7 @@ class ConfirmPickup extends StatefulWidget {
 class _ConfirmPickupState extends State<ConfirmPickup> {
   int _selectedPassengerCount = 1;
   String? todaName;
-
+  bool _isLoading = false;
 
   Future<String> calculateTravelTime(
     double originLatitude,
@@ -102,79 +102,95 @@ class _ConfirmPickupState extends State<ConfirmPickup> {
   }
 
   Future<void> _startTrip(BuildContext context) async {
-    final DatabaseService dbService = DatabaseService();
+    setState(() {
+      _isLoading = true;
+    });
 
-    final deviceLocation = widget.mapProvider?.deviceLocation;
-    final remoteLocation = widget.mapProvider?.remoteLocation;
+    try {
+      final DatabaseService dbService = DatabaseService();
+
+      final deviceLocation = widget.mapProvider?.deviceLocation;
+      final remoteLocation = widget.mapProvider?.remoteLocation;
 
 
-    if (remoteLocation != null) {
-      print("this");
-      Trip newTrip = Trip(
-        pickupAddress: widget.mapProvider?.deviceAddress ?? "",
-        destinationAddress: widget.mapProvider?.remoteAddress ?? "",
-        pickupLatitude: deviceLocation!.latitude,
-        pickupLongitude: deviceLocation.longitude,
-        destinationLatitude: remoteLocation.latitude,
-        destinationLongitude: remoteLocation.longitude,
-        distance: widget.mapProvider?.distance,
-        cost: widget.mapProvider?.cost,
-        passengerId: FirebaseAuth.instance.currentUser?.uid ?? "",
-        passengerName: FirebaseAuth.instance.currentUser?.displayName ?? "",
-        passengerCount: _selectedPassengerCount,
-        feedback: 0,
+      if (remoteLocation != null) {
+        print("this");
+        Trip newTrip = Trip(
+          pickupAddress: widget.mapProvider?.deviceAddress ?? "",
+          destinationAddress: widget.mapProvider?.remoteAddress ?? "",
+          pickupLatitude: deviceLocation!.latitude,
+          pickupLongitude: deviceLocation.longitude,
+          destinationLatitude: remoteLocation.latitude,
+          destinationLongitude: remoteLocation.longitude,
+          distance: widget.mapProvider?.distance,
+          cost: widget.mapProvider?.cost,
+          passengerId: FirebaseAuth.instance.currentUser?.uid ?? "",
+          passengerName: FirebaseAuth.instance.currentUser?.displayName ?? "",
+          passengerCount: _selectedPassengerCount,
+          feedback: 0,
+        );
+
+        String tripId = await dbService.startTrip(newTrip);
+        newTrip.id = tripId;
+        widget.mapProvider?.confirmTrip(newTrip);
+
+        widget.mapProvider?.triggerAutoCancelTrip(
+          tripDeleteHandler: () {
+            newTrip.canceled = true;
+            dbService.updateTrip(newTrip);
+          },
+          snackbarHandler: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Trip is not accepted by any driver'),
+              ),
+            );
+          },
+        );
+      } else {
+        print("that");
+        Trip newTrip = Trip(
+          pickupAddress: widget.mapProvider?.deviceAddress ?? "",
+          destinationAddress: widget.mapProvider?.remoteAddress ?? "",
+          pickupLatitude: deviceLocation!.latitude,
+          pickupLongitude: deviceLocation.longitude,
+          destinationLatitude: remoteLocation!.latitude,
+          destinationLongitude: remoteLocation.longitude,
+          distance: widget.mapProvider?.distance,
+          cost: widget.mapProvider?.cost,
+          passengerId: FirebaseAuth.instance.currentUser?.uid ?? "",
+          passengerName: FirebaseAuth.instance.currentUser?.displayName ?? "",
+          passengerCount: _selectedPassengerCount,
+        );
+
+        String tripId = await dbService.startTrip(newTrip);
+        newTrip.id = tripId;
+        widget.mapProvider?.confirmTrip(newTrip);
+
+        widget.mapProvider?.triggerAutoCancelTrip(
+          tripDeleteHandler: () {
+            newTrip.canceled = true;
+            dbService.updateTrip(newTrip);
+          },
+          snackbarHandler: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Trip is not accepted by any driver'),
+              ),
+            );
+          },
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to start trip: ${e.toString()}'),
+        ),
       );
-
-      String tripId = await dbService.startTrip(newTrip);
-      newTrip.id = tripId;
-      widget.mapProvider?.confirmTrip(newTrip);
-
-      widget.mapProvider?.triggerAutoCancelTrip(
-        tripDeleteHandler: () {
-          newTrip.canceled = true;
-          dbService.updateTrip(newTrip);
-        },
-        snackbarHandler: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Trip is not accepted by any driver'),
-            ),
-          );
-        },
-      );
-    } else {
-      print("that");
-      Trip newTrip = Trip(
-        pickupAddress: widget.mapProvider?.deviceAddress ?? "",
-        destinationAddress: widget.mapProvider?.remoteAddress ?? "",
-        pickupLatitude: deviceLocation!.latitude,
-        pickupLongitude: deviceLocation.longitude,
-        destinationLatitude: remoteLocation!.latitude,
-        destinationLongitude: remoteLocation.longitude,
-        distance: widget.mapProvider?.distance,
-        cost: widget.mapProvider?.cost,
-        passengerId: FirebaseAuth.instance.currentUser?.uid ?? "",
-        passengerName: FirebaseAuth.instance.currentUser?.displayName ?? "",
-        passengerCount: _selectedPassengerCount,
-      );
-
-      String tripId = await dbService.startTrip(newTrip);
-      newTrip.id = tripId;
-      widget.mapProvider?.confirmTrip(newTrip);
-
-      widget.mapProvider?.triggerAutoCancelTrip(
-        tripDeleteHandler: () {
-          newTrip.canceled = true;
-          dbService.updateTrip(newTrip);
-        },
-        snackbarHandler: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Trip is not accepted by any driver'),
-            ),
-          );
-        },
-      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -348,14 +364,23 @@ Widget build(BuildContext context) {
                       ),
                     ),
                   ),
-                  onPressed: () => _startTrip(context),
-                  child: const Text(
-                    'CONFIRM',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                    ),
-                  ),
+                  onPressed: _isLoading ? null : () => _startTrip(context),
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text(
+                          'CONFIRM',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                          ),
+                        ),
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(

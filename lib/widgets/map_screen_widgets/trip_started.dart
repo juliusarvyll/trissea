@@ -20,35 +20,33 @@ class TripStarted extends StatelessWidget {
         left: 0,
         right: 0,
         child: Container(
-          color: Colors.transparent,
-          padding: const EdgeInsets.all(16),
-          child: Card(
-            elevation: 8,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
             ),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _buildTitle(),
-                  const SizedBox(height: 16),
-                  _buildDriverInfo(),
-                  _buildInfoText(
-                    'Remaining Distance: ',
-                    mapProvider.distance != null ? '${mapProvider.distance!.toStringAsFixed(2)} Km' : '--',
-                  ),
-                  _buildInfoText(
-                    'Cost: ',
-                    mapProvider.cost != null ? '\₱${mapProvider.cost!.toStringAsFixed(2)}' : '--',
-                  ),
-                  const SizedBox(height: 16),
-                  _buildReportIssueButton(context),
-                ],
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                spreadRadius: 1,
+                blurRadius: 10,
+                offset: const Offset(0, -2),
               ),
-            ),
+            ],
+          ),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildTitle(),
+              const Divider(height: 30),
+              _buildDriverInfo(),
+              const SizedBox(height: 16),
+              _buildTripDetails(),
+              const SizedBox(height: 20),
+              _buildReportButton(context),
+            ],
           ),
         ),
       ),
@@ -60,25 +58,101 @@ class TripStarted extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        SvgPicture.asset(
-          'images/tricycle.svg',
-          width: 60,
-          height: 60,
-          color: Colors.red, // Use Grab's primary color
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: Colors.red.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: SvgPicture.asset(
+            'images/tricycle.svg',
+            width: 40,
+            height: 40,
+            color: Colors.red,
+          ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 15),
         Expanded(
           child: Text(
             titleText,
             style: const TextStyle(
-              fontSize: 20,
+              fontSize: 22,
               fontWeight: FontWeight.bold,
-              color: Colors.black, // Use Grab's primary color
+              color: Colors.black87,
             ),
-            textAlign: TextAlign.center,
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildTripDetails() {
+    return Container(
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          _buildInfoRow(
+            Icons.route,
+            'Distance',
+            mapProvider.distance != null 
+                ? '${mapProvider.distance!.toStringAsFixed(2)} Km'
+                : '--',
+          ),
+          const Divider(height: 20),
+          _buildInfoRow(
+            Icons.attach_money,
+            'Cost',
+            mapProvider.cost != null 
+                ? '₱${mapProvider.cost!.toStringAsFixed(2)}'
+                : '--',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Icon(icon, color: Colors.red, size: 20),
+        const SizedBox(width: 10),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 16,
+            color: Colors.black54,
+          ),
+        ),
+        const Spacer(),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildReportButton(BuildContext context) {
+    return ElevatedButton.icon(
+      onPressed: () => _showReportIssueDialog(context),
+      icon: const Icon(Icons.report_problem_outlined),
+      label: const Text('Report an Issue'),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.red,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
     );
   }
 
@@ -141,15 +215,6 @@ class TripStarted extends StatelessWidget {
         ],
       ),
       textAlign: TextAlign.center,
-    );
-  }
-
-  Widget _buildReportIssueButton(BuildContext context) {
-    return ElevatedButton(
-      onPressed: () {
-        _showReportIssueDialog(context);
-      },
-      child: Text('Report Issue'),
     );
   }
 

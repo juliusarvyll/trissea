@@ -3,7 +3,7 @@
     "project_number": "558194793862",
     "firebase_url": "https://decisive-plasma-415707-default-rtdb.asia-southeast1.firebasedatabase.app",
     "project_id": "decisive-plasma-415707",
-    "storage_bucket": "decisive-plasma-415707.appspot.com"
+    "storage_bucket": "decisive-plasma-415707.firebasestorage.app"
   },
   "client": [
     {
@@ -11,6 +11,25 @@
         "mobilesdk_app_id": "1:558194793862:android:3c24e94cb975f6c29e6007",
         "android_client_info": {
           "package_name": "com.trissea.spup"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD3jDPWtZ21tpQGZzwKqPwuOoUKHUvOdfY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:558194793862:android:541f935b9f62a5de9e6007",
+        "android_client_info": {
+          "package_name": "com.trisseadriver.spup"
         }
       },
       "oauth_client": [],

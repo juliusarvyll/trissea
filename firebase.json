@@ -1,9 +1,1 @@
-{
-  "database": {
-    "rules": "database.rules.json"
-  },
-  "firestore": {
-    "rules": "firestore.rules",
-    "indexes": "firestore.indexes.json"
-  }
-}
+{"database":{"rules":"database.rules.json"},"firestore":{"rules":"firestore.rules","indexes":"firestore.indexes.json"},"flutter":{"platforms":{"android":{"default":{"projectId":"decisive-plasma-415707","appId":"1:558194793862:android:3c24e94cb975f6c29e6007","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"decisive-plasma-415707","configurations":{"android":"1:558194793862:android:3c24e94cb975f6c29e6007","ios":"1:558194793862:ios:3e4f25ad323d2af49e6007"}}}}}}
