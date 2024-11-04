@@ -175,7 +175,7 @@ class TripStarted extends StatelessWidget {
             DriverInfo driverInfo = snapshot.data as DriverInfo;
             return Column(
               children: [
-                _buildInfoText('Driver: ', driverInfo.driverName),
+                _buildInfoText('Driver: ', driverInfo.fullName),
                 _buildInfoText('Vehicle Color: ', driverInfo.tricycleColor),
                 _buildInfoText('Vehicle Number: ', driverInfo.vehicleNumber),
               ],
@@ -197,24 +197,27 @@ class TripStarted extends StatelessWidget {
   }
 
   Widget _buildInfoText(String title, String info) {
-    return RichText(
-      text: TextSpan(
-        text: title,
-        style: const TextStyle(
-          color: Colors.black, // Text color
-          fontWeight: FontWeight.bold,
-        ),
-        children: [
-          TextSpan(
-            text: info,
-            style: const TextStyle(
-              color: Colors.black, // Text color
-              fontWeight: FontWeight.normal,
-            ),
+    return Row(
+      children: [
+        Icon(Icons.info, color: Colors.red, size: 20),
+        const SizedBox(width: 10),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 16,
+            color: Colors.black54,
           ),
-        ],
-      ),
-      textAlign: TextAlign.center,
+        ),
+        const Spacer(),
+        Text(
+          info,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+      ],
     );
   }
 
@@ -257,7 +260,7 @@ class TripStarted extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               TextField(
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   hintText: 'Enter additional details (optional)',
                   border: OutlineInputBorder(),
                 ),

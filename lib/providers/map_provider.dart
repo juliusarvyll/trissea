@@ -43,7 +43,6 @@ class MapProvider with ChangeNotifier {
   double? _distance;
   LatLng? _draggedLatlng;
   LatLng? _remoteLocation;
-  LatLng? _finalLocation;
   Position? _deviceLocation;
   CameraPosition? _cameraPos;
   Trip? _ongoingTrip;
@@ -72,7 +71,6 @@ class MapProvider with ChangeNotifier {
   LatLng? get draggedLatlng => _draggedLatlng;
   Position? get deviceLocation => _deviceLocation;
   LatLng? get remoteLocation => _remoteLocation;
-  LatLng? get finalLocation => _finalLocation;
   String? get remoteAddress => _remoteAddress;
   String? get finalAddress => _finalAddress;
   String? get deviceAddress => _deviceAddress;
@@ -91,7 +89,6 @@ class MapProvider with ChangeNotifier {
     _mapAction = MapAction.selectTrip;
     _deviceLocation = null;
     _remoteLocation = null;
-    _finalLocation = null;
     _remoteAddress = null;
     _finalAddress = null;
     _draggedLatlng = null;
@@ -113,17 +110,17 @@ class MapProvider with ChangeNotifier {
   }
 
   Future<void> setCustomPin() async {
-    _selectionPin = await BitmapDescriptor.fromAssetImage(
-      const ImageConfiguration(devicePixelRatio: 1, size: Size(20, 20)),
+    _selectionPin = await BitmapDescriptor.asset(
+      const ImageConfiguration(devicePixelRatio: 0.5, size: Size(5, 5)),
       'images/pin.png',
     );
-    _carPin = await BitmapDescriptor.fromAssetImage(
-      const ImageConfiguration(devicePixelRatio: 2.5),
+    _carPin = await BitmapDescriptor.asset(
+      const ImageConfiguration(devicePixelRatio: 0.5),
       'images/car.png',
     );
-    _personPin = await BitmapDescriptor.fromAssetImage(
+    _personPin = await BitmapDescriptor.asset(
       const ImageConfiguration(
-        devicePixelRatio: 2.5,
+        devicePixelRatio: 0.5,
       ),
       'images/map-person.png',
     );
@@ -268,7 +265,7 @@ class MapProvider with ChangeNotifier {
       notifyListeners();
       Future.delayed(const Duration(milliseconds: 500), () async {
 
-        if (_deviceLocation != null || _finalLocation == null) {
+        if (_deviceLocation != null) {
           PolylineResult polylineResult = await setPolyline(pos);
           calculateDistance(polylineResult.points);
           calculateCost();
@@ -296,8 +293,10 @@ class MapProvider with ChangeNotifier {
   }
 
   void stopListenToPositionStream() {
-    _positionStream!.cancel();
-    _positionStream = null;
+    if (_positionStream != null) {
+        _positionStream!.cancel();
+        _positionStream = null;
+    }
   }
 
   void addMarkerPickup(
@@ -344,27 +343,6 @@ class MapProvider with ChangeNotifier {
     _remoteMarker = newMarker;
   }
 
-  void addFinalMarker(
-    LatLng latLng,
-    BitmapDescriptor pin, {
-    bool isDraggable = true,
-    double? heading,
-  }) {
-    final String markerId = const Uuid().v4();
-    final Marker newMarker = Marker(
-      markerId: MarkerId(markerId),
-      position: latLng,
-      draggable: isDraggable,
-      onDrag: (v) {},
-      onDragStart: (v) {},
-      rotation: heading ?? 0.0,
-      icon: pin,
-      zIndex: 3,
-    );
-
-    _markersFinal!.add(newMarker);
-    _finalMarker = newMarker;
-  }
 
   void toggleMarkerDraggable() {
     _markers!.remove(_remoteMarker);
@@ -377,23 +355,42 @@ class MapProvider with ChangeNotifier {
   Future<PolylineResult> setPolyline(
     LatLng remotePoint,
   ) async {
+    if (kDebugMode) {
+      print('====== Setting Polyline ======');
+      print('Remote Point: ${remotePoint.latitude}, ${remotePoint.longitude}');
+      print('Device Location: ${_deviceLocation!.latitude}, ${_deviceLocation!.longitude}');
+    }
+
     _polylines!.clear();
 
     PolylineResult result = await PolylinePoints().getRouteBetweenCoordinates(
       googleApiKey: googleMapApi,
       request: PolylineRequest(
-      destination: PointLatLng(remotePoint.latitude, remotePoint.longitude),
-      origin: PointLatLng(_deviceLocation!.latitude, _deviceLocation!.longitude),
-      mode: travel_mode.TravelMode.driving
-    ));
+        destination: PointLatLng(remotePoint.latitude, remotePoint.longitude),
+        origin: PointLatLng(_deviceLocation!.latitude, _deviceLocation!.longitude),
+        mode: travel_mode.TravelMode.driving
+      )
+    );
+
+    if (kDebugMode) {
+      print('Points received: ${result.points.length}');
+      print('Status: ${result.status}');
+      if (result.errorMessage?.isNotEmpty ?? false) {
+        print('Error: ${result.errorMessage}');
+      }
+    }
 
     if (result.points.isNotEmpty) {
       final String polylineId = const Uuid().v4();
 
+      if (kDebugMode) {
+        print('Creating polyline with ID: $polylineId');
+      }
+
       _polylines!.add(
         Polyline(
           polylineId: PolylineId(polylineId),
-          color: const Color.fromARGB(255, 255, 255, 255),
+          color: Colors.blue,
           points: result.points
               .map((PointLatLng point) =>
                   LatLng(point.latitude, point.longitude))
@@ -401,6 +398,11 @@ class MapProvider with ChangeNotifier {
           width: 4,
         ),
       );
+
+      if (kDebugMode) {
+        print('Polyline added successfully');
+        print('Current polylines count: ${_polylines!.length}');
+      }
     }
     return result;
   }
@@ -434,9 +436,9 @@ class MapProvider with ChangeNotifier {
         final remoteFormattedAddress = reversedSearchResults.results.firstOrNull?.mapToPretty();
         
         if (remoteFormattedAddress != null) {
-          String streetNumber = remoteFormattedAddress.streetNumber ?? '';
-          String streetName = remoteFormattedAddress.streetName ?? 'Unknown Street';
-          String city = remoteFormattedAddress.city ?? '';
+          String streetNumber = remoteFormattedAddress.streetNumber;
+          String streetName = remoteFormattedAddress.streetName;
+          String city = remoteFormattedAddress.city;
           
           _remoteAddress = '$streetNumber $streetName, $city'.trim();
           _isAddressSet = true;
@@ -450,54 +452,6 @@ class MapProvider with ChangeNotifier {
         notifyListeners();
       }
     });
-  }
-
-  Future<void> setFinalAddress(LatLng pos) async {
-    _finalLocation = pos;
-
-    const bool isDebugMode = true;
-    final api = GoogleGeocodingApi(googleMapApi, isLogged: isDebugMode);
-
-    try {
-      final reversedSearchResults = await api.reverse(
-        '${pos.latitude},${pos.longitude}',
-      );
-
-      final remoteFormattedAddress = reversedSearchResults.results.firstOrNull?.mapToPretty();
-
-      if (remoteFormattedAddress?.streetName == null) {
-        LatLng adjustedPos = pos;
-        bool foundStreet = false;
-
-        while (!foundStreet) {
-          adjustedPos = LatLng(adjustedPos.latitude + 0.011, adjustedPos.longitude + 0.011);
-          final adjustedReversedSearchResults = await api.reverse(
-            '${adjustedPos.latitude},${adjustedPos.longitude}',
-          );
-          final adjustedRemoteFormattedAddress = adjustedReversedSearchResults.results.firstOrNull?.mapToPretty();
-
-          if (adjustedRemoteFormattedAddress?.streetName != null) {
-            _remoteAddress = adjustedRemoteFormattedAddress?.streetName ?? '';
-            foundStreet = true;
-          }
-        }
-      } else {
-        _remoteAddress = remoteFormattedAddress?.streetName ?? '';
-      }
-
-      String streetNumber = remoteFormattedAddress?.streetNumber ?? '';
-      String city = remoteFormattedAddress?.city ?? '';
-      _remoteAddress = '$streetNumber $_remoteAddress, $city';
-
-      if (kDebugMode) {
-        print('remoteFormattedAddress: ${remoteFormattedAddress?.streetName}, ${remoteFormattedAddress?.city}');
-      }
-      notifyListeners();
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error: $e');
-      }
-    }
   }
 
   void calculateDistance(List<PointLatLng> points) {
@@ -558,10 +512,7 @@ class MapProvider with ChangeNotifier {
     _remoteLocation = null;
     _isAddressSet = false;
   }
-  void clearFinalAddress() {
-    _finalAddress = null;
-    _finalLocation = null;
-  }
+
 
   void resetMapAction() {
     _mapAction = MapAction.selectTrip;
@@ -607,9 +558,27 @@ class MapProvider with ChangeNotifier {
   }
 
   void startListeningToDriver() {
+    if (_carPin == null) {
+      if (kDebugMode) {
+        print('Warning: Car pin not initialized');
+      }
+      return;
+    }
+
+    if (_ongoingTrip?.driverId == null) {
+      if (kDebugMode) {
+        print('Warning: No driver ID available');
+      }
+      return;
+    }
+
     _driverStream = _dbService.getDriver$(_ongoingTrip!.driverId!).listen(
       (User driver) async {
         if (driver.userLatitude != null && driver.userLongitude != null) {
+          if (kDebugMode) {
+            print('Driver location updated: ${driver.userLatitude}, ${driver.userLongitude}');
+          }
+
           if (mapAction == MapAction.driverArriving && !_driverArrivingInit) {
             animateCameraToBounds(
               firstPoint: LatLng(
@@ -622,24 +591,28 @@ class MapProvider with ChangeNotifier {
             _driverArrivingInit = true;
           }
 
-          clearRoutes(false);
+          // Clear only driver route, not destination route
+          _polylines?.removeWhere((polyline) => polyline.polylineId.value.contains('driver'));
+
+          // Add driver marker with car pin
           addMarker(
             LatLng(driver.userLatitude!, driver.userLongitude!),
-            _carPin!,
+            _carPin!,  // Use car pin here
             isDraggable: false,
             heading: driver.heading,
           );
-          notifyListeners();
 
-          PolylineResult polylineResult = await setPolyline(
-            LatLng(
-              driver.userLatitude!,
-              driver.userLongitude!,
-            ),
+          // Draw polyline from driver to pickup location
+          await setPolyline(
+            LatLng(driver.userLatitude!, driver.userLongitude!),
           );
-          calculateDistance(polylineResult.points);
 
           notifyListeners();
+        }
+      },
+      onError: (error) {
+        if (kDebugMode) {
+          print('Error in driver stream: $error');
         }
       },
     );

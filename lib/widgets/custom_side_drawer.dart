@@ -33,7 +33,7 @@ class CustomSideDrawer extends StatelessWidget {
               child: Container(
                 width: double.infinity,
                 padding: EdgeInsets.only(
-                  top: MediaQuery.of(context).padding.top + 20,
+                  top: MediaQuery.of(context).padding.top,
                   bottom: 20,
                   left: 16,
                 ),
@@ -42,7 +42,7 @@ class CustomSideDrawer extends StatelessWidget {
                     ? Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.person,
                             size: 50,
                             color: Colors.white,
@@ -105,6 +105,14 @@ class CustomSideDrawer extends StatelessWidget {
                       icon: Icons.build_rounded,
                       onTap: () {
                         Navigator.of(context).pushNamed(Routes.terminal);
+                      },
+                    ),
+                    _buildButtonTile(
+                      context: context,
+                      title: 'Scan QR',
+                      icon: Icons.qr_code_scanner,
+                      onTap: () {
+                        Navigator.of(context).pushNamed('/qr-scanner');
                       },
                     ),
                   ],

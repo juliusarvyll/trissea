@@ -59,7 +59,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
     try {
       // Query Firestore to retrieve driver details based on driver ID
       DriverInfo driverInfo = await DatabaseService().getDriverInfo(driverId);
-      if (driverInfo.driverName.isNotEmpty) { // Updated to check `fullName` instead of `driverName`
+      if (driverInfo.fullName.isNotEmpty) { // Updated to check `fullName` instead of `driverName`
         // Driver found, navigate to driver profile screen
         Navigator.push(
           context,

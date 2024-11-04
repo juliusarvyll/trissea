@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:animated_text_kit/animated_text_kit.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:lottie/lottie.dart';
 
 import '../../models/map_action.dart';
 import '../../models/trip_model.dart';
@@ -30,7 +29,7 @@ class SearchDriver extends StatelessWidget {
     return Visibility(
       visible: mapProvider.mapAction == MapAction.searchDriver,
       child: Positioned.fill(
-        top: screenSize.height * 0.75,
+        top: screenSize.height * 0.70,
         child: Container(
           decoration: BoxDecoration(
             color: Colors.white,
@@ -48,14 +47,6 @@ class SearchDriver extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               // Loading Animation
-              SizedBox(
-                height: 100,
-                child: Lottie.asset(
-                  'images/animations/car-searching.json',
-                  fit: BoxFit.contain,
-                ),
-              ),
-              const SizedBox(height: 16),
               // Animated Text
               DefaultTextStyle(
                 style: GoogleFonts.poppins(

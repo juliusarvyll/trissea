@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:animated_text_kit/animated_text_kit.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import '../../models/map_action.dart';
 import '../../providers/map_provider.dart';
 
 class AcceptedRequest extends StatelessWidget {
@@ -50,15 +48,7 @@ class AcceptedRequest extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                   color: Colors.black54,
                 ),
-                child: AnimatedTextKit(
-                  animatedTexts: [
-                    TypewriterAnimatedText(
-                      'A driver accepted your request. Please enter the tricycle',
-                      speed: const Duration(milliseconds: 100),
-                    ),
-                  ],
-                  totalRepeatCount: 20,
-                ),
+                child: Text('A driver accepted your request. Please enter the tricycle'),
               ),
               const SizedBox(height: 20),
               const Text(

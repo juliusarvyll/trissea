@@ -74,6 +74,8 @@ class _TripsScreenState extends State<TripsScreen> with AutomaticKeepAliveClient
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              _buildInfoText('Driver:', trip.driverName!),
+              const SizedBox(height: 10),
               _buildInfoText('Pickup:', trip.pickupAddress!),
               const SizedBox(height: 10),
               _buildInfoText('Destination:', trip.destinationAddress!),

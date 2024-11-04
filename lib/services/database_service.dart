@@ -8,7 +8,7 @@ class DriverInfo {
   final String caseNumber;
   final String contactNumber;
   final String email;
-  final String driverName;
+  final String fullName;
   final String operatorName;
   final String tricycleColor;
   final String vehicleNumber;
@@ -17,7 +17,7 @@ class DriverInfo {
     required this.caseNumber,
     required this.contactNumber,
     required this.email,
-    required this.driverName,
+    required this.fullName,
     required this.operatorName,
     required this.tricycleColor,
     required this.vehicleNumber,
@@ -76,7 +76,7 @@ class DatabaseService {
       String caseNumber = snapshot['caseNumber'];
       String contactNumber = snapshot['contactNumber'];
       String email = snapshot['email'];
-      String driverName = snapshot['driverName'];
+      String fullName = snapshot['fullName'];
       String operatorName = snapshot['operatorName'];
       String tricycleColor = snapshot['tricycleColor'];
       String vehicleNumber = snapshot['vehicleNumber'];
@@ -85,7 +85,7 @@ class DatabaseService {
         caseNumber: caseNumber,
         contactNumber: contactNumber,
         email: email,
-        driverName: driverName,
+        fullName: fullName,
         operatorName: operatorName,
         tricycleColor: tricycleColor,
         vehicleNumber: vehicleNumber,
@@ -97,7 +97,7 @@ class DatabaseService {
         caseNumber: '',
         contactNumber: '',
         email: '',
-        driverName: '',
+        fullName: '',
         operatorName: '',
         tricycleColor: '',
         vehicleNumber: '',
@@ -170,7 +170,7 @@ class DatabaseService {
     try {
       await _firestore.collection('reportedDrivers').add({
         'caseNumber': driverInfo.caseNumber,
-        'driverName': driverInfo.driverName,
+        'fullName': driverInfo.fullName,
         'vehicleNumber': driverInfo.vehicleNumber,
         'reportReason': reportReason,
         'reportedAt': FieldValue.serverTimestamp(),

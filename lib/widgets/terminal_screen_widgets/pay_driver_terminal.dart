@@ -3,7 +3,6 @@ import 'package:animated_text_kit/animated_text_kit.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import '../../models/map_action.dart';
 import '../../providers/map_provider.dart';
 
 class PayDriverTerminal extends StatelessWidget {

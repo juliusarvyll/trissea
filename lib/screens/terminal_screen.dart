@@ -89,6 +89,7 @@ class _TerminalScreenState extends State<TerminalScreen> with AutomaticKeepAlive
       cost: cost,
       timestamp: Timestamp.now(),
       accepted: false,
+      cancelled: false,
       ended: false,
     );
 
@@ -134,6 +135,7 @@ class _TerminalScreenState extends State<TerminalScreen> with AutomaticKeepAlive
                   if (snapshot.hasError) {
                     return Center(child: Text('Error: ${snapshot.error}'));
                   }
+                  
 
                   final terminals = snapshot.data?.docs ?? [];
 

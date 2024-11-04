@@ -20,7 +20,7 @@ class DriverProfile extends StatelessWidget {
             _buildProfileItem('Case Number', driverInfo.caseNumber),
             _buildProfileItem('Contact Number', driverInfo.contactNumber),
             _buildProfileItem('Email', driverInfo.email),
-            _buildProfileItem('Full Name', driverInfo.driverName),
+            _buildProfileItem('Full Name', driverInfo.fullName),
             _buildProfileItem('Operator Name', driverInfo.operatorName),
             _buildProfileItem('Tricycle Color', driverInfo.tricycleColor),
             _buildProfileItem('Vehicle Number', driverInfo.vehicleNumber),

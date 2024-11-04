@@ -9,6 +9,7 @@ class TerminalTrip {
   final int cost;
   final Timestamp timestamp;
   bool accepted;
+  bool cancelled;
   bool ended;
 
 
@@ -21,6 +22,7 @@ class TerminalTrip {
     required this.cost,
     required this.timestamp,
     this.accepted = false,
+    this.cancelled = false,
     this.ended = false,
   });
 
@@ -36,6 +38,7 @@ class TerminalTrip {
       'timestamp': timestamp,
       'accepted': accepted,
       'ended': ended,
+      'cancelled': cancelled,
     };
   }
 
@@ -51,6 +54,7 @@ class TerminalTrip {
       timestamp: map['timestamp'],
       accepted: map['accepted'] ?? false,
       ended: map['ended'] ?? false,
+      cancelled: map['cancelled'] ?? false,
     );
   }
 }

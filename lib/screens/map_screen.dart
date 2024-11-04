@@ -97,6 +97,7 @@ class _MapScreenState extends State<MapScreen> with AutomaticKeepAliveClientMixi
                                   onCameraMove: getMarkerPosition,
                                   onCameraIdle: updateMarkerPosition,
                                   markers: {
+                                    if (mapProvider.markers != null) ...mapProvider.markers!,
                                     ...mapProvider.markersPickup!,
                                     ...mapProvider.markersFinal!
                                   },
@@ -105,13 +106,14 @@ class _MapScreenState extends State<MapScreen> with AutomaticKeepAliveClientMixi
                               : const Center(
                                   child: CircularProgressIndicator(),
                                 ),
-                          const Center(
-                            child: Icon(
-                              Icons.location_on,
-                              color: Colors.red,
-                              size: 36,
+                          if (mapProvider.mapAction == MapAction.selectTrip)
+                            const Center(
+                              child: Icon(
+                                Icons.location_on,
+                                color: Colors.red,
+                                size: 36,
+                              ),
                             ),
-                          ),
                           ConfirmPickup(mapProvider: mapProvider),
                           SearchDriver(mapProvider: mapProvider),
                           TripStarted(mapProvider: mapProvider),
@@ -139,18 +141,19 @@ class _MapScreenState extends State<MapScreen> with AutomaticKeepAliveClientMixi
                         color: Colors.white,
                         child: Column(
                           children: [
-                            Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Text(
-                                mapProvider.remoteAddress ?? 'Enter address',
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  fontSize: 18.0,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black,
+                            if (mapProvider.remoteAddress != null && mapProvider.remoteAddress!.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Text(
+                                  mapProvider.remoteAddress!,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    fontSize: 18.0,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black,
+                                  ),
                                 ),
                               ),
-                            ),
                             SizedBox(
                               width: double.infinity,
                               child: ElevatedButton(

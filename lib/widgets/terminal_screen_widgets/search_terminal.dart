@@ -27,7 +27,7 @@ class _SearchTerminalState extends State<SearchTerminal> {
   void initState() {
     super.initState();
     // Start 60-second timer when widget initializes
-    _searchTimer = Timer(const Duration(seconds: 10), () {
+    _searchTimer = Timer(const Duration(seconds: 30), () {
       _cancelTrip();
     });
   }
@@ -42,7 +42,10 @@ class _SearchTerminalState extends State<SearchTerminal> {
     await FirebaseFirestore.instance
         .collection('TerminalTrips')
         .doc(widget.tripDocumentId)
-        .update({'accepted': false});
+        .update({
+          'accepted': false,
+          'cancelled': true
+        });
     widget.mapProvider.cancelTrip();
   }
 
@@ -62,15 +65,7 @@ class _SearchTerminalState extends State<SearchTerminal> {
               fontWeight: FontWeight.bold,
               color: Colors.black54,
             ),
-            child: AnimatedTextKit(
-              animatedTexts: [
-                TypewriterAnimatedText(
-                  'Searching for a Driver...',
-                  speed: Duration(milliseconds: 100),
-                ),
-              ],
-              totalRepeatCount: 20,
-            ),
+            child: Text('Searching for a Driver...'),
           ),
           SizedBox(height: 10,),
           Text("Give drivers time to accept booking")
