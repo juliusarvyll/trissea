@@ -160,4 +160,11 @@ class Trip {
 
     return data;
   }
+
+  factory Trip.fromMap(Map<String, dynamic> map) {
+    return Trip(
+      id: map['id'],
+      // Add other properties from your map
+    );
+  }
 }

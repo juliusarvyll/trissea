@@ -55,6 +55,8 @@ class MapProvider with ChangeNotifier {
   bool _isAddressSet = false;
   Timer? _deviceAddressDebounceTimer;
 
+  MapAction get mapAction => _mapAction ?? MapAction.selectTrip;
+
   GlobalKey<ScaffoldState>? get scaffoldKey => _scaffoldKey;
   CameraPosition? get cameraPos => _cameraPos;
   GoogleMapController? get controller => _controller;
@@ -64,7 +66,6 @@ class MapProvider with ChangeNotifier {
   Marker? get pickupMarker => _pickupMarker!;
   Marker? get remoteMarker => _remoteMarker!;
   Marker? get finalMarker => _finalMarker!;
-  MapAction? get mapAction => _mapAction;
   BitmapDescriptor? get selectionPin => _selectionPin;
   BitmapDescriptor? get personPin => _personPin;
   BitmapDescriptor? get carPin => _carPin;
@@ -518,8 +519,9 @@ class MapProvider with ChangeNotifier {
     _mapAction = MapAction.selectTrip;
   }
 
-  void changeMapAction(MapAction mapAction) {
-    _mapAction = mapAction;
+  void changeMapAction(MapAction newAction) {
+    print('🔄 Changing MapAction from: $_mapAction to: $newAction');
+    _mapAction = newAction;
     notifyListeners();
   }
 
@@ -881,19 +883,44 @@ class MapProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  void cancelTrip() {
-    resetMapAction();
-    _markersPickup!.clear;
-    _markers!.clear;
-    _markersFinal!.clear;
+  Future<void> cancelTrip() async {
+    print('🔄 Starting trip cancellation');
+    print('📦 Current ongoing trip: $_ongoingTrip');
 
-    clearRoutes();
-    _ongoingTrip = null;
-    _driverArrivingInit = false;
-    stopListeningToTrip();
-    stopAutoCancelTimer();
+    if (_ongoingTrip == null) {
+      print('⚠️ No ongoing trip to cancel');
+      // Just reset the UI state
+      resetMapAction();
+      _markersPickup?.clear();
+      _markers?.clear();
+      _markersFinal?.clear();
+      clearRoutes();
+      notifyListeners();
+      return;
+    }
 
-    notifyListeners();
+    try {
+      print('🎯 Canceling trip ID: ${_ongoingTrip!.id}');
+      _ongoingTrip!.canceled = true;
+      await _dbService.updateTrip(_ongoingTrip!);
+      print('✅ Trip updated as canceled in database');
+    } catch (e) {
+      print('❌ Error canceling trip: $e');
+    } finally {
+      // Reset state after database update
+      resetMapAction();
+      _markersPickup?.clear();
+      _markers?.clear();
+      _markersFinal?.clear();
+      clearRoutes();
+      _ongoingTrip = null;
+      _driverArrivingInit = false;
+      stopListeningToTrip();
+      stopAutoCancelTimer();
+
+      notifyListeners();
+      print('🔄 Map state reset after cancellation');
+    }
   }
 
   LatLng getNorthEastLatLng(LatLng firstPoint, LatLng lastPoint) => LatLng(
@@ -932,6 +959,27 @@ class MapProvider with ChangeNotifier {
 
   void animateCameraToPos(LatLng pos, [double zoom = 15]) {
     _controller!.animateCamera(CameraUpdate.newLatLngZoom(pos, zoom));
+  }
+
+  void updateTripStatus(Trip trip) {
+    print('📊 UpdateTripStatus - Current MapAction: $_mapAction');
+    print('📊 Trip status - accepted: ${trip.accepted}, started: ${trip.started}, completed: ${trip.tripCompleted}');
+
+    // Preserve searchDriver state
+    if (_mapAction == MapAction.searchDriver && !trip.accepted!) {
+      print('🔒 Preserving searchDriver state');
+      return;
+    }
+
+    if (trip.accepted == true) {
+      changeMapAction(MapAction.searchDriver);
+    } else if (trip.started == true) {
+      changeMapAction(MapAction.tripStarted);
+    } else if (trip.tripCompleted == true) {
+      changeMapAction(MapAction.reachedDestination);
+    }
+    
+    notifyListeners();
   }
 
   @override

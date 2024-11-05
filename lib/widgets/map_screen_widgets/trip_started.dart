@@ -11,6 +11,9 @@ class TripStarted extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    print('🚗 TripStarted build - MapAction: ${mapProvider.mapAction}');
+    print('📦 Ongoing trip: ${mapProvider.ongoingTrip?.toMap()}');
+    
     return Visibility(
       visible: mapProvider.mapAction == MapAction.tripStarted ||
           mapProvider.mapAction == MapAction.driverArriving ||

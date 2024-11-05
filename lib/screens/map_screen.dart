@@ -12,6 +12,7 @@ import 'package:trissea/widgets/map_screen_widgets/reached_destination.dart';
 import 'package:trissea/widgets/map_screen_widgets/feedback.dart';
 import 'package:trissea/screens/search_bar.dart';
 import 'dart:async';
+import 'package:trissea/providers/user_provider.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({Key? key}) : super(key: key);
@@ -27,14 +28,23 @@ class _MapScreenState extends State<MapScreen> with AutomaticKeepAliveClientMixi
   Timer? _debounceTimer;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   MapProvider? _mapProvider;
+  bool _hasCheckedBooking = false;
 
   @override
   void initState() {
     super.initState();
+    print('🎬 MapScreen initState called');
     _mapProvider = Provider.of<MapProvider>(context, listen: false);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // Basic map initialization
       _mapProvider?.setScaffoldKey(_scaffoldKey);
       _mapProvider?.initializeMap(scaffoldKey: _scaffoldKey);
+      
+      if (!_hasCheckedBooking) {
+        await _checkActiveBooking();
+        _hasCheckedBooking = true;
+      }
     });
   }
 
@@ -49,8 +59,10 @@ class _MapScreenState extends State<MapScreen> with AutomaticKeepAliveClientMixi
   }
 
   void onButtonPressed() {
+    print('📍 Location selected at: $_draggedLatlng');
     _mapProvider!.changeMapAction(MapAction.tripSelected);
     _mapProvider!.onTap(_draggedLatlng);
+    print('🎯 MapAction after selection: ${_mapProvider!.mapAction}');
   }
 
   void getMarkerPosition(CameraPosition cameraPosition) {
@@ -74,8 +86,17 @@ class _MapScreenState extends State<MapScreen> with AutomaticKeepAliveClientMixi
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return Consumer<MapProvider>(
-      builder: (BuildContext context, mapProvider, _) {
+    return Consumer2<MapProvider, UserProvider>(
+      builder: (BuildContext context, mapProvider, userProvider, _) {
+        // Add debug prints
+        print('🎯 Current MapAction: ${mapProvider.mapAction}');
+        print('📦 Active Booking: ${userProvider.activeBooking != null}');
+        
+        final bool showSelectionUI = mapProvider.mapAction == MapAction.selectTrip && 
+                                   userProvider.activeBooking == null;
+        
+        print('🎨 Show Selection UI: $showSelectionUI');
+        
         return Scaffold(
           key: _scaffoldKey,
           drawer: const CustomSideDrawer(),
@@ -119,7 +140,7 @@ class _MapScreenState extends State<MapScreen> with AutomaticKeepAliveClientMixi
                           TripStarted(mapProvider: mapProvider),
                           ReachedDestination(mapProvider: mapProvider),
                           FeedbackPage(mapProvider: mapProvider),
-                          if (mapProvider.mapAction == MapAction.selectTrip)
+                          if (showSelectionUI)
                             SearchLocationWidget(mapProvider: mapProvider),
                           FloatingDrawerBarButton(scaffoldKey: _scaffoldKey),
                         ],
@@ -128,7 +149,7 @@ class _MapScreenState extends State<MapScreen> with AutomaticKeepAliveClientMixi
                   ],
                 ),
               ),
-              if (mapProvider.mapAction == MapAction.selectTrip)
+              if (showSelectionUI)
                 Positioned(
                   bottom: 0,
                   left: 0,
@@ -182,5 +203,23 @@ class _MapScreenState extends State<MapScreen> with AutomaticKeepAliveClientMixi
         );
       },
     );
+  }
+
+  Future<void> _checkActiveBooking() async {
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    
+    print('⏳ Waiting for user data to load...');
+    while (userProvider.loggedUser == null) {
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
+    
+    print('👤 User ID: ${userProvider.loggedUser?.id}');
+    await userProvider.checkActiveBooking(userProvider.loggedUser!.id!);
+    
+    if (userProvider.activeBooking != null) {
+      print('📦 Active booking found:');
+      print('   - ID: ${userProvider.activeBooking?.id}');
+      print('   - Status: accepted=${userProvider.activeBooking?.accepted}, started=${userProvider.activeBooking?.started}');
+    }
   }
 }

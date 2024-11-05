@@ -109,8 +109,28 @@ class DatabaseService {
     String docId = _firestore.collection('trips').doc().id;
     trip.id = docId;
     await _firestore.collection('trips').doc(docId).set(trip.toMap());
+    
+    // Add active booking to passenger's document
+    await addActiveBooking(trip.passengerId!, docId, trip.toMap());
 
     return trip.id!;
+  }
+
+  Future<void> addActiveBooking(String passengerId, String tripId, Map<String, dynamic> tripData) async {
+    try {
+      await _firestore
+          .collection('passengers')
+          .doc(passengerId)
+          .collection('activeBookings')
+          .doc(tripId)
+          .set({
+        ...tripData,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      print('Error adding active booking: $e');
+      throw Exception('Failed to add active booking');
+    }
   }
 
   Future<String> startTodaTrip(Trip trip) async {
@@ -122,9 +142,50 @@ class DatabaseService {
   }
 
   Future<void> updateTrip(Trip trip) async {
-    await _firestore.collection('trips').doc(trip.id).update(trip.toMap());
+    try {
+      print('🔄 Starting updateTrip for trip ID: ${trip.id}');
+      print('📝 Trip data: ${trip.toMap()}');
+      print('👤 PassengerId: ${trip.passengerId}');
+      print('✅ Trip completed: ${trip.tripCompleted}');
+      print('❌ Trip canceled: ${trip.canceled}');
+
+      // Update main trip document
+      await _firestore.collection('trips').doc(trip.id).update(trip.toMap());
+      print('✨ Main trip document updated successfully');
+      
+      // Only proceed with passenger updates if we have a passengerId
+      if (trip.passengerId != null) {
+        print('👥 Found passengerId: ${trip.passengerId}');
+        
+        // Update active booking in passenger's collection
+        if (trip.tripCompleted == true || trip.canceled == true) {
+          print('🗑️ Attempting to remove trip ${trip.id} from active bookings');
+          print('📍 Path: passengers/${trip.passengerId}/activeBookings/${trip.id}');
+          
+          await _firestore
+              .collection('passengers')
+              .doc(trip.passengerId)
+              .collection('activeBookings')
+              .doc(trip.id)
+              .delete();
+          
+          print('✅ Successfully removed from active bookings');
+        } else {
+          await _firestore
+              .collection('passengers')
+              .doc(trip.passengerId)
+              .collection('activeBookings')
+              .doc(trip.id)
+              .update(trip.toMap());
+        }
+      } else {
+        print('⚠️ No passengerId found for trip ${trip.id}');
+      }
+    } catch (e) {
+      print('❌ Error updating trip: $e');
+      throw Exception('Failed to update trip');
+    }
   }
-  
 
   Future<void> updateTodaTrip(Trip trip) async {
     await _firestore.collection('trips').doc(trip.id).update(trip.toMap());

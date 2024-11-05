@@ -15,17 +15,11 @@ class SearchDriver extends StatelessWidget {
 
   final MapProvider mapProvider;
 
-  void _cancelTrip() {
-    final DatabaseService dbService = DatabaseService();
-    final Trip ongoingTrip = mapProvider.ongoingTrip!;
-    ongoingTrip.canceled = true;
-    dbService.updateTrip(ongoingTrip);
-    mapProvider.cancelTrip();
-  }
-
   @override
   Widget build(BuildContext context) {
+    print('🔍 SearchDriver build - MapAction: ${mapProvider.mapAction}');
     Size screenSize = MediaQuery.of(context).size;
+    
     return Visibility(
       visible: mapProvider.mapAction == MapAction.searchDriver,
       child: Positioned.fill(
@@ -33,12 +27,12 @@ class SearchDriver extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.1),
                 blurRadius: 10,
-                offset: Offset(0, -5),
+                offset: const Offset(0, -5),
               ),
             ],
           ),
@@ -46,8 +40,6 @@ class SearchDriver extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Loading Animation
-              // Animated Text
               DefaultTextStyle(
                 style: GoogleFonts.poppins(
                   fontSize: 22,
@@ -58,14 +50,13 @@ class SearchDriver extends StatelessWidget {
                   animatedTexts: [
                     TypewriterAnimatedText(
                       'Searching for a Driver...',
-                      speed: Duration(milliseconds: 100),
+                      speed: const Duration(milliseconds: 100),
                     ),
                   ],
                   totalRepeatCount: 20,
                 ),
               ),
               const SizedBox(height: 12),
-              // Subtitle
               Text(
                 "Please wait while we connect you with a nearby driver",
                 textAlign: TextAlign.center,
@@ -75,11 +66,10 @@ class SearchDriver extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 20),
-              // Cancel Button
               TextButton.icon(
                 onPressed: () => _cancelTrip(),
-                icon: Icon(Icons.cancel_outlined, color: Colors.red),
-                label: Text(
+                icon: const Icon(Icons.cancel_outlined, color: Colors.red),
+                label: const Text(
                   'Cancel Search',
                   style: TextStyle(
                     color: Colors.red,
@@ -87,7 +77,7 @@ class SearchDriver extends StatelessWidget {
                   ),
                 ),
                 style: TextButton.styleFrom(
-                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                     side: BorderSide(color: Colors.red.withOpacity(0.5)),
@@ -99,5 +89,18 @@ class SearchDriver extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  void _cancelTrip() {
+    print('❌ Canceling trip');
+    final DatabaseService dbService = DatabaseService();
+    if (mapProvider.ongoingTrip != null) {
+      print('📝 Updating trip status to canceled');
+      final Trip ongoingTrip = mapProvider.ongoingTrip!;
+      ongoingTrip.canceled = true;
+      dbService.updateTrip(ongoingTrip);
+    }
+    print('🔄 Resetting map state');
+    mapProvider.cancelTrip();
   }
 }
