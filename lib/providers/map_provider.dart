@@ -811,7 +811,7 @@ class MapProvider with ChangeNotifier {
       if (kDebugMode) {}
       setOngoingTrip(trip);
 
-      if (trip.tripCompleted != null && trip.tripCompleted!) {
+      if (trip.tripCompleted != true && trip.tripCompleted!) {
         triggerFeedback();
       } else if (trip.reachedDestination != null && trip.reachedDestination!) {
         triggerReachedDestination();

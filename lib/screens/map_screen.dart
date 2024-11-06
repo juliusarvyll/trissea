@@ -220,6 +220,19 @@ class _MapScreenState extends State<MapScreen> with AutomaticKeepAliveClientMixi
       print('📦 Active booking found:');
       print('   - ID: ${userProvider.activeBooking?.id}');
       print('   - Status: accepted=${userProvider.activeBooking?.accepted}, started=${userProvider.activeBooking?.started}');
+      
+      if (userProvider.activeBooking!.accepted == true) {
+        if (userProvider.activeBooking!.started == true) {
+          _mapProvider?.changeMapAction(MapAction.tripStarted);
+        } else {
+          _mapProvider?.changeMapAction(MapAction.driverArriving);
+        }
+        if (_mapProvider?.ongoingTrip == null) {
+          _mapProvider?.setOngoingTrip(userProvider.activeBooking!);
+        }
+      } else {
+        _mapProvider?.changeMapAction(MapAction.searchDriver);
+      }
     }
   }
 }
