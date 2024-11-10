@@ -54,6 +54,7 @@ class MapProvider with ChangeNotifier {
   Timer? _geocodingDebounceTimer;
   bool _isAddressSet = false;
   Timer? _deviceAddressDebounceTimer;
+  double _specialPrice = 20.0; // Default price if Firebase fetch fails
 
   MapAction get mapAction => _mapAction ?? MapAction.selectTrip;
 
@@ -108,6 +109,7 @@ class MapProvider with ChangeNotifier {
     _driverStream = null;
     _positionStream = null;
     setCustomPin();
+    fetchSpecialPrice();
   }
 
   Future<void> setCustomPin() async {
@@ -117,13 +119,13 @@ class MapProvider with ChangeNotifier {
     );
     _carPin = await BitmapDescriptor.asset(
       const ImageConfiguration(devicePixelRatio: 0.5),
-      'images/car.png',
+      'images/tricy.png',
     );
     _personPin = await BitmapDescriptor.asset(
       const ImageConfiguration(
         devicePixelRatio: 0.5,
       ),
-      'images/map-person.png',
+      'images/tricy.png',
     );
   }
 
@@ -136,59 +138,59 @@ class MapProvider with ChangeNotifier {
     LatLng? cameraLatLng;
 
 
-      setScaffoldKey(scaffoldKey!);
+    setScaffoldKey(scaffoldKey!);
 
-      if (await _locationService.checkLocationIfPermanentlyDisabled()) {
-        // Show dialog for permanently disabled location
-        if (scaffoldKey.currentContext != null) {
-          showDialog(
-            context: scaffoldKey.currentContext!,
-            builder: (BuildContext context) {
-              return AlertDialog(
-                content: const Text(
-                  'Location permission is permanently disabled. Enable it from app settings',
+    if (await _locationService.checkLocationIfPermanentlyDisabled()) {
+      // Show dialog for permanently disabled location
+      if (scaffoldKey.currentContext != null) {
+        showDialog(
+          context: scaffoldKey.currentContext!,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              content: const Text(
+                'Location permission is permanently disabled. Enable it from app settings',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Geolocator.openAppSettings(),
+                  child: const Text('Open App Settings'),
                 ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Geolocator.openAppSettings(),
-                    child: const Text('Open App Settings'),
-                  ),
-                ],
-              );
-            },
-          );
-        }
-      } else if (await _locationService.checkLocationPermission()) {
-        try {
-          deviceLocation = await _locationService.getLocation();
-          cameraLatLng = LatLng(
-            deviceLocation.latitude,
-            deviceLocation.longitude,
-          );
+              ],
+            );
+          },
+        );
+      }
+    } else if (await _locationService.checkLocationPermission()) {
+      try {
+        deviceLocation = await _locationService.getLocation();
+        cameraLatLng = LatLng(
+          deviceLocation.latitude,
+          deviceLocation.longitude,
+        );
+        
+        // Batch state updates
+        await Future.microtask(() {
+          setDeviceLocation(deviceLocation!);
+          addMarkerPickup(cameraLatLng!, _personPin!);
+          setCameraPosition(cameraLatLng);
+          changeMapAction(MapAction.selectTrip);
           
-          // Batch state updates
-          await Future.microtask(() {
-            setDeviceLocation(deviceLocation!);
-            addMarkerPickup(cameraLatLng!, _personPin!);
-            setCameraPosition(cameraLatLng);
-            changeMapAction(MapAction.selectTrip);
-            
-            // Cancel existing stream before starting new one
-            _positionStream?.cancel();
-            listenToPositionStream();
-          });
+          // Cancel existing stream before starting new one
+          _positionStream?.cancel();
+          listenToPositionStream();
+        });
 
-          // Handle address update separately
-          await setDeviceLocationAddress(
-            deviceLocation.latitude,
-            deviceLocation.longitude,
-          );
-        } catch (error) {
-          if (kDebugMode) {
-            print('Unable to get device location: $error');
-          }
+        // Handle address update separately
+        await setDeviceLocationAddress(
+          deviceLocation.latitude,
+          deviceLocation.longitude,
+        );
+      } catch (error) {
+        if (kDebugMode) {
+          print('Unable to get device location: $error');
         }
       }
+    }
 
     // Use default LatLng if deviceLocation is null
     cameraLatLng ??= const LatLng(37.42227936982647, -122.08611108362673);
@@ -490,8 +492,19 @@ class MapProvider with ChangeNotifier {
   }
 
   void calculateCost() {
-    double calculatedCost = _distance! * 20;
-    _cost = calculatedCost.clamp(20, 100);
+    if (kDebugMode) {
+      print('💰 Calculating trip cost:');
+      print('   - Distance: $_distance km');
+      print('   - Special Price: $_specialPrice per km');
+    }
+
+    double calculatedCost = _distance! * _specialPrice;
+    _cost = calculatedCost.clamp(50, 100);
+
+    if (kDebugMode) {
+      print('   - Raw Cost: $calculatedCost');
+      print('   - Final Cost (clamped): $_cost');
+    }
   }
 
   void clearRoutes([bool shouldClearDistanceCost = true]) {
@@ -980,6 +993,35 @@ class MapProvider with ChangeNotifier {
     }
     
     notifyListeners();
+  }
+
+  Future<void> fetchSpecialPrice() async {
+    if (kDebugMode) {
+      print('🏷️ Fetching special price from Firebase...');
+    }
+    
+    try {
+      final doc = await _firestore.collection('specialPrice').doc('current').get();
+      if (doc.exists) {
+        final newPrice = (doc.data()?['price'] ?? 20.0).toDouble();
+        if (kDebugMode) {
+          print('✅ Special price fetched successfully:');
+          print('   - Previous price: $_specialPrice');
+          print('   - New price: $newPrice');
+        }
+        _specialPrice = newPrice;
+      } else {
+        if (kDebugMode) {
+          print('⚠️ No special price document found, using default: $_specialPrice');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error fetching special price:');
+        print('   - Error: $e');
+        print('   - Using default price: $_specialPrice');
+      }
+    }
   }
 
   @override

@@ -13,6 +13,7 @@ import 'package:trissea/widgets/map_screen_widgets/feedback.dart';
 import 'package:trissea/screens/search_bar.dart';
 import 'dart:async';
 import 'package:trissea/providers/user_provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({Key? key}) : super(key: key);
@@ -35,6 +36,9 @@ class _MapScreenState extends State<MapScreen> with AutomaticKeepAliveClientMixi
     super.initState();
     print('🎬 MapScreen initState called');
     _mapProvider = Provider.of<MapProvider>(context, listen: false);
+    
+    // Initial fetch
+    _mapProvider?.fetchSpecialPrice();
     
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       // Basic map initialization
@@ -120,7 +124,7 @@ class _MapScreenState extends State<MapScreen> with AutomaticKeepAliveClientMixi
                                   markers: {
                                     if (mapProvider.markers != null) ...mapProvider.markers!,
                                     ...mapProvider.markersPickup!,
-                                    ...mapProvider.markersFinal!
+                                    ...mapProvider.markersFinal!,
                                   },
                                   polylines: mapProvider.polylines!,
                                 )

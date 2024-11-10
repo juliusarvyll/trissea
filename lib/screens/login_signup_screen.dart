@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../widgets/login_signup_screen_widgets/login_signup_form.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class LoginSignupScreen extends StatelessWidget {
   const LoginSignupScreen({Key? key}) : super(key: key);
@@ -20,15 +21,13 @@ class LoginSignupScreen extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: <Widget>[
-                Icon(
-                  Icons.location_on_sharp,
-                  size: 100,
-                  color: Theme.of(context).primaryColor,
+                SvgPicture.asset(
+                  'images/logo.svg',
+                  width: 300,
+                  height: 300,
                 ),
                 const SizedBox(height: 10),
-                Text('TRISSEA', style: Theme.of(context).textTheme.displayLarge),
-                const SizedBox(height: 20),
-                LoginForm(context: context), // Pass the context here
+                LoginForm(context: context),
               ],
             ),
           ),

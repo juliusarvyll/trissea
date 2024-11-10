@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:trissea/constant.dart';
@@ -194,220 +195,224 @@ class _ConfirmPickupState extends State<ConfirmPickup> {
     }
   }
 
-  
+  @override
+  void initState() {
+    super.initState();
+    widget.mapProvider?.fetchSpecialPrice();
+  }
 
-@override
-Widget build(BuildContext context) {
-  return Visibility(
-    visible: widget.mapProvider!.mapAction == MapAction.tripSelected &&
-        widget.mapProvider!.remoteMarker != null,
-    child: Center(
-      child: Container(
-        margin: EdgeInsets.symmetric(vertical: 100, horizontal: 20),
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              spreadRadius: 3,
-              blurRadius: 5,
-              offset: const Offset(0, 3), // changes position of shadow
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            widget.mapProvider!.remoteLocation != null
-                ? Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (widget.mapProvider!.remoteAddress != null)
-                        Row(
-                          children: [
-                            const Icon(Icons.location_pin),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                widget.mapProvider!.remoteAddress!,
+  @override
+  Widget build(BuildContext context) {
+    return Visibility(
+      visible: widget.mapProvider!.mapAction == MapAction.tripSelected &&
+          widget.mapProvider!.remoteMarker != null,
+      child: Center(
+        child: Container(
+          margin: EdgeInsets.symmetric(vertical: 100, horizontal: 20),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                spreadRadius: 3,
+                blurRadius: 5,
+                offset: const Offset(0, 3), // changes position of shadow
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              widget.mapProvider!.remoteLocation != null
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (widget.mapProvider!.remoteAddress != null)
+                          Row(
+                            children: [
+                              const Icon(Icons.location_pin),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  widget.mapProvider!.remoteAddress!,
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        const SizedBox(height: 8),
+                        if (widget.mapProvider!.distance != null)
+                          Row(
+                            children: [
+                              const Icon(Icons.directions),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Distance: ${widget.mapProvider!.distance!.toStringAsFixed(2)} km',
                                 style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
                                   color: Colors.black,
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
                               ),
-                            ),
-                          ],
-                        ),
-                      const SizedBox(height: 8),
-                      if (widget.mapProvider!.distance != null)
-                        Row(
-                          children: [
-                            const Icon(Icons.directions),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Distance: ${widget.mapProvider!.distance!.toStringAsFixed(2)} km',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                color: Colors.black,
-                              ),
-                            ),
-                          ],
-                        ),
-                      if (widget.mapProvider!.cost != null)
-                        Row(
-                          children: [
-                            const Icon(Icons.money),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Trip will cost: P${widget.mapProvider!.cost!.toStringAsFixed(2)}',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                color: Colors.black,
-                              ),
-                            ),
-                          ],
-                        ),
-                      FutureBuilder<String>(
-                        future: getTravelTime(),
-                        builder: (context, snapshot) {
-                          if (snapshot.connectionState ==
-                              ConnectionState.waiting) {
-                            return const Row(
-                              children: [
-                                Icon(Icons.access_time),
-                                SizedBox(width: 8),
-                                Text(
-                                  'Travel Time: Calculating...',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.black,
-                                  ),
-                                ),
-                              ],
-                            );
-                          } else if (snapshot.hasError) {
-                            return Row(
-                              children: [
-                                const Icon(Icons.error),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'Travel Time: Error calculating travel time: ${snapshot.error}',
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.black,
-                                  ),
-                                ),
-                              ],
-                            );
-                          } else {
-                            final travelTime = snapshot.data;
-                            return Row(
-                              children: [
-                                const Icon(Icons.timer),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'Travel Time: $travelTime minutes',
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.black,
-                                  ),
-                                ),
-                              ],
-                            );
-                          }
-                        },
-                      ),
-                    ],
-                  )
-                : const SizedBox.shrink(),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                const Icon(Icons.person),
-                const SizedBox(width: 8),
-                DropdownButton<int>(
-                  value: _selectedPassengerCount,
-                  items: List.generate(5, (index) {
-                    return DropdownMenuItem<int>(
-                      value: index + 1,
-                      child: Text('${index + 1} Passenger'),
-                    );
-                  }),
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() {
-                        _selectedPassengerCount = value;
-                      });
-                    }
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [   
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.black,
-                    padding: const EdgeInsets.all(15),
-                    shape: const RoundedRectangleBorder(
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(10),
-                        topRight: Radius.circular(10),
-                      ),
-                    ),
-                  ),
-                  onPressed: _isLoading ? null : () => _startTrip(context),
-                  child: _isLoading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                            strokeWidth: 2,
+                            ],
                           ),
-                        )
-                      : const Text(
-                          'CONFIRM',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
+                        if (widget.mapProvider!.cost != null)
+                          Row(
+                            children: [
+                              const Icon(Icons.money),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Trip will cost: P${widget.mapProvider!.cost!.toStringAsFixed(2)}',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.black,
+                                ),
+                              ),
+                            ],
                           ),
+                        FutureBuilder<String>(
+                          future: getTravelTime(),
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return const Row(
+                                children: [
+                                  Icon(Icons.access_time),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Travel Time: Calculating...',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                ],
+                              );
+                            } else if (snapshot.hasError) {
+                              return Row(
+                                children: [
+                                  const Icon(Icons.error),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Travel Time: Error calculating travel time: ${snapshot.error}',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                ],
+                              );
+                            } else {
+                              final travelTime = snapshot.data;
+                              return Row(
+                                children: [
+                                  const Icon(Icons.timer),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Travel Time: $travelTime minutes',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                ],
+                              );
+                            }
+                          },
                         ),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.grey[300],
-                    padding: const EdgeInsets.all(15),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.only(
-                        bottomLeft: Radius.circular(10),
-                        bottomRight: Radius.circular(10),
+                      ],
+                    )
+                  : const SizedBox.shrink(),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  const Icon(Icons.person),
+                  const SizedBox(width: 8),
+                  DropdownButton<int>(
+                    value: _selectedPassengerCount,
+                    items: List.generate(5, (index) {
+                      return DropdownMenuItem<int>(
+                        value: index + 1,
+                        child: Text('${index + 1} Passenger'),
+                      );
+                    }),
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() {
+                          _selectedPassengerCount = value;
+                        });
+                      }
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [   
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.black,
+                      padding: const EdgeInsets.all(15),
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(10),
+                          topRight: Radius.circular(10),
+                        ),
+                      ),
+                    ),
+                    onPressed: _isLoading ? null : () => _startTrip(context),
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Text(
+                            'CONFIRM',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                            ),
+                          ),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey[300],
+                      padding: const EdgeInsets.all(15),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.only(
+                          bottomLeft: Radius.circular(10),
+                          bottomRight: Radius.circular(10),
+                        ),
+                      ),
+                    ),
+                    onPressed: () => widget.mapProvider!.cancelTrip(),
+                    child: const Text(
+                      'CANCEL',
+                      style: TextStyle(
+                        color: Colors.black54,
+                        fontSize: 16,
                       ),
                     ),
                   ),
-                  onPressed: () => widget.mapProvider!.cancelTrip(),
-                  child: const Text(
-                    'CANCEL',
-                    style: TextStyle(
-                      color: Colors.black54,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 }

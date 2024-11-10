@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -8,8 +9,44 @@ import '../screens/login_signup_screen.dart';
 import '../screens/profile_screen.dart';
 import '../routes/routes.dart';
 
-class CustomSideDrawer extends StatelessWidget {
+class CustomSideDrawer extends StatefulWidget {
   const CustomSideDrawer({Key? key}) : super(key: key);
+
+  @override
+  State<CustomSideDrawer> createState() => _CustomSideDrawerState();
+}
+
+class _CustomSideDrawerState extends State<CustomSideDrawer> {
+  bool _hasSpecialPrice = false;
+  String _specialPriceReason = '';
+
+  @override
+  void initState() {
+    super.initState();
+    checkSpecialPrice();
+  }
+
+  Future<void> checkSpecialPrice() async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('specialPrice')
+          .doc('current')
+          .get();
+      if (doc.exists && doc.data()?['reason'] != null) {
+        setState(() {
+          _hasSpecialPrice = true;
+          _specialPriceReason = doc.data()?['reason'] ?? '';
+        });
+      } else {
+        setState(() {
+          _hasSpecialPrice = false;
+          _specialPriceReason = '';
+        });
+      }
+    } catch (e) {
+      print('Error fetching special price: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -73,13 +110,42 @@ class CustomSideDrawer extends StatelessWidget {
                       ),
               ),
             ),
+            // Special Price Notification
+            if (_hasSpecialPrice)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 8,
+                  horizontal: 16,
+                ),
+                color: Colors.red.withOpacity(0.9),
+                child: Row(
+                  children: [
+                    Icon(
+                      _specialPriceReason == 'raining' 
+                          ? Icons.thunderstorm_rounded
+                          : Icons.warning,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Special pricing in effect due to $_specialPriceReason',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             // Buttons Section
             Expanded(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: ListView(
+              child: ListView(
                   children: [
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 8),
                     _buildButtonTile(
                       context: context,
                       title: 'Home',
@@ -118,7 +184,7 @@ class CustomSideDrawer extends StatelessWidget {
                   ],
                 ),
               ),
-            ),
+          
             // Logout Button
             Container(
               padding: const EdgeInsets.all(20),
