@@ -54,6 +54,9 @@ class MapProvider with ChangeNotifier {
   Timer? _geocodingDebounceTimer;
   bool _isAddressSet = false;
   Timer? _deviceAddressDebounceTimer;
+  final CollectionReference _specialPriceCollection = FirebaseFirestore.instance.collection('specialPrice');
+  double _pricePerKm = 20.0; // Default price if Firebase fetch fails
+  String? _specialPriceReason;
 
   MapAction get mapAction => _mapAction ?? MapAction.selectTrip;
 
@@ -131,7 +134,38 @@ class MapProvider with ChangeNotifier {
     _scaffoldKey = scaffoldKey;
   }
 
+  Future<void> initializePrice() async {
+    try {
+      // Listen to real-time updates
+      _specialPriceCollection.doc('current').snapshots().listen((snapshot) {
+        if (snapshot.exists) {
+          final data = snapshot.data() as Map<String, dynamic>;
+          _pricePerKm = (data['price'] ?? 40.0).toDouble();
+          _specialPriceReason = data['reason'] as String?;
+          
+          if (kDebugMode) {
+            print('Price per km updated to: $_pricePerKm');
+            print('Special price reason: $_specialPriceReason');
+          }
+          
+          notifyListeners();
+        }
+      });
+      
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error fetching price: $e');
+      }
+      // Set default values on error
+      _pricePerKm = 20.0;
+      _specialPriceReason = null;
+      notifyListeners();
+    }
+  }
+
   Future<void> initializeMap({GlobalKey<ScaffoldState>? scaffoldKey}) async {
+    await initializePrice();
+
     Position? deviceLocation;
     LatLng? cameraLatLng;
 
@@ -490,8 +524,9 @@ class MapProvider with ChangeNotifier {
   }
 
   void calculateCost() {
-    double calculatedCost = _distance! * 20;
-    _cost = calculatedCost.clamp(20, 100);
+    double calculatedCost = _distance! * _pricePerKm;
+    _cost = calculatedCost.clamp(_pricePerKm, 100);
+    notifyListeners();
   }
 
   void clearRoutes([bool shouldClearDistanceCost = true]) {
@@ -987,4 +1022,6 @@ class MapProvider with ChangeNotifier {
     _deviceAddressDebounceTimer?.cancel();
     super.dispose();
   }
+
+  String? get specialPriceReason => _specialPriceReason;
 }

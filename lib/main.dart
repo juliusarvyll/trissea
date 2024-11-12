@@ -72,7 +72,7 @@ class _SplashScreenState extends State<SplashScreen> {
           children: [
             // Logo
             Image.asset(
-              'assets/final_logo.png',
+              'images/final_logo.png',
               width: MediaQuery.of(context).size.width * 0.7, // 70% of screen width
               fit: BoxFit.contain,
             ),

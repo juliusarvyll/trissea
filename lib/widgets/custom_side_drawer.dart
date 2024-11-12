@@ -14,7 +14,7 @@ class CustomSideDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final MapProvider mapProvider = Provider.of<MapProvider>(context, listen: false);
+    final MapProvider mapProvider = Provider.of<MapProvider>(context);
     final UserProvider userProvider = Provider.of<UserProvider>(context, listen: false);
     final user.User? loggedUser = userProvider.loggedUser;
 
@@ -74,6 +74,50 @@ class CustomSideDrawer extends StatelessWidget {
                       ),
               ),
             ),
+
+            // Price Alert Banner (if active)
+            if (mapProvider.specialPriceReason != null)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  vertical: 8,
+                  horizontal: 16,
+                ),
+                color: Colors.orange.shade100,
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.warning_amber_rounded,
+                      color: Colors.orange,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Special Price Alert',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.orange,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Price increased due to ${mapProvider.specialPriceReason}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
             // Buttons Section
             Expanded(
               child: Container(
