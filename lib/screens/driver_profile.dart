@@ -11,11 +11,30 @@ class DriverProfile extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Driver Profile'),
+        elevation: 0,
       ),
-      body: Padding(
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildProfileSection(),
+              const SizedBox(height: 24),
+              _buildReportButton(context),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileSection() {
+    return Card(
+      elevation: 2,
+      child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildProfileItem('Case Number', driverInfo.caseNumber),
             _buildProfileItem('Contact Number', driverInfo.contactNumber),
@@ -24,16 +43,23 @@ class DriverProfile extends StatelessWidget {
             _buildProfileItem('Operator Name', driverInfo.operatorName),
             _buildProfileItem('Tricycle Color', driverInfo.tricycleColor),
             _buildProfileItem('Vehicle Number', driverInfo.vehicleNumber),
-            const SizedBox(height: 20), // Add space before the button
-            ElevatedButton(
-              onPressed: () {
-                _showReportDialog(context, driverInfo);
-              },
-              child: const Text('Report Driver'),
-            ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildReportButton(BuildContext context) {
+    return ElevatedButton.icon(
+      onPressed: () => _showReportDialog(context, driverInfo),
+      style: ElevatedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
+      icon: const Icon(Icons.report_problem),
+      label: const Text('Report Driver'),
     );
   }
 
@@ -68,26 +94,39 @@ class DriverProfile extends StatelessWidget {
   }
 
   Future<void> _showReportDialog(BuildContext context, DriverInfo driverInfo) async {
+    final controller = TextEditingController();
     String? reportReason = await showDialog(
       context: context,
       builder: (BuildContext context) {
-        TextEditingController controller = TextEditingController();
         return AlertDialog(
           title: const Text('Report Driver'),
-          content: TextField(
-            controller: controller,
-            decoration: const InputDecoration(
-              hintText: 'Enter reason for reporting...',
-              border: OutlineInputBorder(),
-            ),
-            maxLines: 5,
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Please provide details about your report:',
+                style: TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: controller,
+                decoration: const InputDecoration(
+                  hintText: 'Enter reason for reporting...',
+                  border: OutlineInputBorder(),
+                  filled: true,
+                ),
+                maxLines: 5,
+              ),
+            ],
           ),
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(controller.text.trim());
-              },
-              child: const Text('Submit'),
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(controller.text.trim()),
+              child: const Text('Submit Report'),
             ),
           ],
         );
