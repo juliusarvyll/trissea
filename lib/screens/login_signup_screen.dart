@@ -15,20 +15,18 @@ class LoginSignupScreen extends StatelessWidget {
           child: Container(
             height: MediaQuery.of(context).size.height,
             alignment: Alignment.center,
-            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 40),
+            padding: const EdgeInsets.symmetric(horizontal: 30),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: <Widget>[
-                Icon(
-                  Icons.location_on_sharp,
-                  size: 100,
-                  color: Theme.of(context).primaryColor,
+                Image.asset(
+                  'images/final_logo.png',
+                  height: 300,
+                  fit: BoxFit.contain,
                 ),
-                const SizedBox(height: 10),
-                Text('TRISSEA', style: Theme.of(context).textTheme.displayLarge),
                 const SizedBox(height: 20),
-                LoginForm(context: context), // Pass the context here
+                LoginForm(context: context),
               ],
             ),
           ),

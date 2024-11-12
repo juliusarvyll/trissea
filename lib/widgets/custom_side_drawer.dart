@@ -7,6 +7,7 @@ import '../providers/user_provider.dart';
 import '../screens/login_signup_screen.dart';
 import '../screens/profile_screen.dart';
 import '../routes/routes.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class CustomSideDrawer extends StatelessWidget {
   const CustomSideDrawer({Key? key}) : super(key: key);
@@ -76,10 +77,8 @@ class CustomSideDrawer extends StatelessWidget {
             // Buttons Section
             Expanded(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: ListView(
                   children: [
-                    const SizedBox(height: 20),
                     _buildButtonTile(
                       context: context,
                       title: 'Home',
@@ -102,7 +101,15 @@ class CustomSideDrawer extends StatelessWidget {
                     _buildButtonTile(
                       context: context,
                       title: 'Terminals',
-                      icon: Icons.build_rounded,
+                      customIcon: SvgPicture.asset(
+                        'images/tricycle.svg',
+                        width: 24,
+                        height: 24,
+                        colorFilter: ColorFilter.mode(
+                          Colors.green.shade800,
+                          BlendMode.srcIn,
+                        ),
+                      ),
                       onTap: () {
                         Navigator.of(context).pushNamed(Routes.terminal);
                       },
@@ -147,12 +154,13 @@ class CustomSideDrawer extends StatelessWidget {
   Widget _buildButtonTile({
     required BuildContext context,
     required String title,
-    required IconData icon,
+    IconData? icon,
+    Widget? customIcon,
     required VoidCallback onTap,
     bool isLogout = false,
   }) {
     return ListTile(
-      leading: Icon(
+      leading: customIcon ?? Icon(
         icon,
         color: isLogout ? Colors.red : Colors.green.shade800,
         size: 24,

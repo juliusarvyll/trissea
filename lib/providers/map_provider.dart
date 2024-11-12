@@ -769,7 +769,6 @@ class MapProvider with ChangeNotifier {
 
   void triggerTripCompleted() {
     resetMapAction();
-    cancelTrip();
     ScaffoldMessenger.of(_scaffoldKey!.currentContext!).showSnackBar(
       const SnackBar(content: Text('Trip Completed')),
     );

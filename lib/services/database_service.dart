@@ -209,10 +209,36 @@ class DatabaseService {
   }
 
   Stream<Trip> getTrip$(Trip trip) {
-    return _firestore.collection('trips').doc(trip.id).snapshots().map(
+    // First, get the trip updates
+    Stream<Trip> tripStream = _firestore.collection('trips').doc(trip.id).snapshots().map(
           (DocumentSnapshot snapshot) =>
               Trip.fromJson(snapshot.data() as Map<String, dynamic>),
         );
+
+    // Listen to changes and sync with passenger's active bookings
+    tripStream.listen((Trip updatedTrip) async {
+      if (updatedTrip.passengerId != null) {
+        if (updatedTrip.tripCompleted == true || updatedTrip.canceled == true) {
+          // Remove from active bookings if trip is completed or canceled
+          await _firestore
+              .collection('passengers')
+              .doc(updatedTrip.passengerId)
+              .collection('activeBookings')
+              .doc(updatedTrip.id)
+              .delete();
+        } else {
+          // Update the active booking
+          await _firestore
+              .collection('passengers')
+              .doc(updatedTrip.passengerId)
+              .collection('activeBookings')
+              .doc(updatedTrip.id)
+              .set(updatedTrip.toMap());
+        }
+      }
+    });
+
+    return tripStream;
   }
 
   Stream<Trip> getTodaTrip$(Trip trip) {

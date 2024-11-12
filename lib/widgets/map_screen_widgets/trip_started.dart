@@ -4,20 +4,39 @@ import '../../models/map_action.dart';
 import '../../providers/map_provider.dart';
 import '../../services/database_service.dart';
 
-class TripStarted extends StatelessWidget {
+class TripStarted extends StatefulWidget {
   const TripStarted({Key? key, required this.mapProvider}) : super(key: key);
 
   final MapProvider mapProvider;
 
   @override
+  State<TripStarted> createState() => _TripStartedState();
+}
+
+class _TripStartedState extends State<TripStarted> {
+  final DatabaseService _databaseService = DatabaseService();
+  
+  @override
+  void initState() {
+    super.initState();
+    _initTripStream();
+  }
+
+  void _initTripStream() {
+    if (widget.mapProvider.ongoingTrip != null) {
+      _databaseService.getTrip$(widget.mapProvider.ongoingTrip!);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    print('🚗 TripStarted build - MapAction: ${mapProvider.mapAction}');
-    print('📦 Ongoing trip: ${mapProvider.ongoingTrip?.toMap()}');
+    print('🚗 TripStarted build - MapAction: ${widget.mapProvider.mapAction}');
+    print('📦 Ongoing trip: ${widget.mapProvider.ongoingTrip?.toMap()}');
     
     return Visibility(
-      visible: mapProvider.mapAction == MapAction.tripStarted ||
-          mapProvider.mapAction == MapAction.driverArriving ||
-          mapProvider.mapAction == MapAction.driverArrived,
+      visible: widget.mapProvider.mapAction == MapAction.tripStarted ||
+          widget.mapProvider.mapAction == MapAction.driverArriving ||
+          widget.mapProvider.mapAction == MapAction.driverArrived,
       child: Positioned(
         bottom: 0,
         left: 0,
@@ -101,16 +120,16 @@ class TripStarted extends StatelessWidget {
           _buildInfoRow(
             Icons.route,
             'Distance',
-            mapProvider.distance != null 
-                ? '${mapProvider.distance!.toStringAsFixed(2)} Km'
+            widget.mapProvider.distance != null 
+                ? '${widget.mapProvider.distance!.toStringAsFixed(2)} Km'
                 : '--',
           ),
           const Divider(height: 20),
           _buildInfoRow(
             Icons.attach_money,
             'Cost',
-            mapProvider.cost != null 
-                ? '₱${mapProvider.cost!.toStringAsFixed(2)}'
+            widget.mapProvider.cost != null 
+                ? '₱${widget.mapProvider.cost!.toStringAsFixed(2)}'
                 : '--',
           ),
         ],
@@ -196,7 +215,7 @@ class TripStarted extends StatelessWidget {
       MapAction.tripStarted,
       MapAction.driverArriving,
       MapAction.driverArrived
-    ].contains(mapProvider.mapAction);
+    ].contains(widget.mapProvider.mapAction);
   }
 
   Widget _buildInfoText(String title, String info) {
@@ -305,20 +324,20 @@ class TripStarted extends StatelessWidget {
     if (reportedIssue.isNotEmpty) {
       finalIssue += ' - $reportedIssue';
     }
-    mapProvider.setReport(finalIssue);
+    widget.mapProvider.setReport(finalIssue);
   }
 
   Future<DriverInfo> _getDriverInfo() async {
-    String? driverId = mapProvider.ongoingTrip?.driverId;
+    String? driverId = widget.mapProvider.ongoingTrip?.driverId;
     if (driverId != null) {
-      return await DatabaseService().getDriverInfo(driverId);
+      return await _databaseService.getDriverInfo(driverId);
     } else {
       throw Exception('Driver information not available');
     }
   }
 
   String getTitleText() {
-    switch (mapProvider.mapAction) {
+    switch (widget.mapProvider.mapAction) {
       case MapAction.tripStarted:
         return 'Enjoy your ride!';
       case MapAction.driverArriving:
