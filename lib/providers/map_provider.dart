@@ -57,6 +57,7 @@ class MapProvider with ChangeNotifier {
   final CollectionReference _specialPriceCollection = FirebaseFirestore.instance.collection('specialPrice');
   double _pricePerKm = 20.0; // Default price if Firebase fetch fails
   String? _specialPriceReason;
+  int _selectedPassengerCount = 1;  // Default to 1 passenger
 
   MapAction get mapAction => _mapAction ?? MapAction.selectTrip;
 
@@ -524,8 +525,16 @@ class MapProvider with ChangeNotifier {
   }
 
   void calculateCost() {
-    double calculatedCost = _distance! * _pricePerKm;
-    _cost = calculatedCost.clamp(_pricePerKm, 100);
+    // Base calculation with passenger count multiplier
+    double baseCalculatedCost = _distance! * _pricePerKm;
+    double calculatedCost = baseCalculatedCost * _selectedPassengerCount;
+    
+    // Set maximum cost based on passenger count
+    double maxCost = (_selectedPassengerCount >= 3) ? 150.0 : 100.0;
+    
+    // Clamp the final value between 30 and max cost
+    _cost = calculatedCost.clamp(30.0, maxCost);
+    
     notifyListeners();
   }
 
@@ -564,18 +573,33 @@ class MapProvider with ChangeNotifier {
     _ongoingTrip = trip;
   }
 
-  void setFeedback(double feedback, String comment) async {
+  void setFeedback(double feedback, String comment) {
+    print('📝 Setting feedback: $feedback');
+    
     if (_ongoingTrip != null) {
-      _ongoingTrip!.rate = feedback;
+      try {
+        _ongoingTrip!.rate = feedback;
 
-      // Update Firestore document with the new feedback
-      await _firestore
-          .collection('trips')
-          .doc(_ongoingTrip!.id)
-          .update({'feedback': feedback, 'comment': comment,});
+        // Update Firestore document
+         _firestore
+            .collection('trips')
+            .doc(_ongoingTrip!.id)
+            .update({
+              'feedback': feedback, 
+              'comment': comment,
+              'tripCompleted': true  // Ensure this is set
+            });
 
-      // Notify listeners if necessary
-      notifyListeners();
+        print('✅ Feedback saved successfully');
+        
+        // Reset the trip state after feedback
+        resetTripState();
+        
+      } catch (e) {
+        print('❌ Error saving feedback: $e');
+      }
+    } else {
+      print('⚠️ No ongoing trip found when setting feedback');
     }
   }
 
@@ -787,7 +811,7 @@ class MapProvider with ChangeNotifier {
   }
 
   void triggerReachedDestination() {
-    changeMapAction(MapAction.reachedDestination);
+    changeMapAction(MapAction.reachedFinalDestination);
     clearRoutes(false);
 
     notifyListeners();
@@ -798,8 +822,19 @@ class MapProvider with ChangeNotifier {
   }
 
   void triggerFeedback() {
+    print('🔄 Triggering feedback state');
+    print('- Previous state: $_mapAction');
+    
     changeMapAction(MapAction.feedbackPage);
+    
+    // Clear any existing routes/markers
+    clearRoutes(false);
+    
+    // Stop listening to driver updates
+    stopListeningToDriver();
+    
     notifyListeners();
+    print('✅ Feedback state activated');
   }
 
   void triggerTripCompleted() {
@@ -813,24 +848,33 @@ class MapProvider with ChangeNotifier {
 
   void startListeningToTrip() {
     if (kDebugMode) {
-      print('======== Start litening to trip stream ========');
+      print('======== Start listening to trip stream ========');
     }
 
     _tripStream = _dbService.getTrip$(_ongoingTrip!).listen((Trip trip) {
-      if (kDebugMode) {}
+      print('🔄 Trip Update Received:');
+      print('- Completed: ${trip.tripCompleted}');
+      print('- Reached Destination: ${trip.reachedFinalDestination}');
+      print('- Started: ${trip.started}');
+      print('- Accepted: ${trip.accepted}');
+      
       setOngoingTrip(trip);
 
-      if (trip.tripCompleted != null && trip.tripCompleted!) {
+      // Handle state transitions in order of completion
+      if (trip.tripCompleted == true) {
+        print('📍 Triggering feedback state');
         triggerFeedback();
-      } else if (trip.reachedDestination != null && trip.reachedDestination!) {
+      } else if (trip.reachedFinalDestination == true) {
+        print('📍 Triggering reached destination state');
         triggerReachedDestination();
-      } else if (trip.arrivedToFinalDestination != null && trip.arrivedToFinalDestination!) {
-        triggerTripToFinalStarted();
-      } else if (trip.started != null && trip.started!) {
+      } else if (trip.started == true) {
+        print('📍 Triggering trip started state');
         triggerTripStarted();
-      } else if (trip.arrived != null && trip.arrived!) {
+      } else if (trip.arrived == true) {
+        print('📍 Triggering driver arrived state');
         triggerDriverArrived();
-      } else if (trip.accepted!) {
+      } else if (trip.accepted == true) {
+        print('📍 Triggering driver arriving state');
         triggerDriverArriving();
       }
     });
@@ -847,7 +891,7 @@ class MapProvider with ChangeNotifier {
 
       if (trip.tripCompleted != true && trip.tripCompleted!) {
         triggerFeedback();
-      } else if (trip.reachedDestination != null && trip.reachedDestination!) {
+      } else if (trip.reachedFinalDestination != null && trip.reachedFinalDestination!) {
         triggerReachedDestination();
       } else if (trip.arrivedToFinalDestination != null && trip.arrivedToFinalDestination!) {
         triggerTripToFinalStarted();
@@ -1010,7 +1054,7 @@ class MapProvider with ChangeNotifier {
     } else if (trip.started == true) {
       changeMapAction(MapAction.tripStarted);
     } else if (trip.tripCompleted == true) {
-      changeMapAction(MapAction.reachedDestination);
+      changeMapAction(MapAction.reachedFinalDestination);
     }
     
     notifyListeners();
@@ -1024,4 +1068,37 @@ class MapProvider with ChangeNotifier {
   }
 
   String? get specialPriceReason => _specialPriceReason;
+
+  void resetTripState() {
+    print('🔄 Resetting trip state');
+    
+    // Clear trip data
+    _ongoingTrip = null;
+    _driverArrivingInit = false;
+    
+    // Stop all listeners
+    stopListeningToTrip();
+    stopListeningToDriver();
+    stopAutoCancelTimer();
+    
+    // Clear map state
+    resetMapAction();
+    _markersPickup?.clear();
+    _markers?.clear();
+    _markersFinal?.clear();
+    clearRoutes();
+    
+    notifyListeners();
+    print('✅ Trip state reset complete');
+  }
+
+  int get selectedPassengerCount => _selectedPassengerCount;
+  
+  void setSelectedPassengerCount(int count) {
+    _selectedPassengerCount = count;
+    // Recalculate cost if distance exists
+    if (_distance != null) {
+      calculateCost();
+    }
+  }
 }

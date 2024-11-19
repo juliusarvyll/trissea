@@ -33,7 +33,7 @@ class Trip {
   bool? canceled;
   bool? arrived;
   bool? arrivedToFinalDestination;
-  bool? reachedDestination;
+  bool? reachedFinalDestination;
   bool? tripCompleted;
   Timestamp? currentDate; // Field for current date as Timestamp
 
@@ -69,7 +69,7 @@ class Trip {
     this.canceled = false,
     this.arrived,
     this.arrivedToFinalDestination,
-    this.reachedDestination,
+    this.reachedFinalDestination,
     this.tripCompleted,
     this.rideShare,
     Timestamp? currentDate, // Constructor parameter for current date as Timestamp
@@ -107,7 +107,7 @@ class Trip {
         canceled: data['canceled'],
         arrived: data['arrived'],
         arrivedToFinalDestination: data['arrivedToFinalDestination'],
-        reachedDestination: data['reachedDestination'],
+        reachedFinalDestination: data['reachedFinalDestination'],
         tripCompleted: data['tripCompleted'],
         rideShare: data['rideShare'],
         currentDate: data['currentDate'] ?? Timestamp.now(), // Initialize current date from JSON as Timestamp
@@ -153,7 +153,7 @@ class Trip {
     addNonNull('canceled', canceled);
     addNonNull('arrived', arrived);
     addNonNull('arrivedToFinalDestination', arrivedToFinalDestination);
-    addNonNull('reachedDestination', reachedDestination);
+    addNonNull('reachedFinalDestination', reachedFinalDestination);
     addNonNull('tripCompleted', tripCompleted);
     addNonNull('rideShare', rideShare);
     addNonNull('currentDate', currentDate);

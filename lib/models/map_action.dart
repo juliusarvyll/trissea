@@ -7,7 +7,7 @@ enum MapAction {
   driverArriving,
   driverArrived,
   tripStarted,
-  reachedDestination,
+  reachedFinalDestination,
   feedbackPage,
   shareRide,
 

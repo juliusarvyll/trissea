@@ -88,9 +88,28 @@ class _MapScreenState extends State<MapScreen> with AutomaticKeepAliveClientMixi
     super.build(context);
     return Consumer2<MapProvider, UserProvider>(
       builder: (BuildContext context, mapProvider, userProvider, _) {
-        // Add debug prints
         print('🎯 Current MapAction: ${mapProvider.mapAction}');
         print('📦 Active Booking: ${userProvider.activeBooking != null}');
+        
+        if (userProvider.activeBooking != null) {
+          final trip = userProvider.activeBooking!;
+          mapProvider.setOngoingTrip(trip);
+          mapProvider.startListeningToTrip();
+          
+          if (trip.tripCompleted == true) {
+            mapProvider.changeMapAction(MapAction.feedbackPage);
+          } else if (trip.reachedFinalDestination == true) {
+            mapProvider.changeMapAction(MapAction.reachedFinalDestination);
+          } else if (trip.started == true) {
+            mapProvider.changeMapAction(MapAction.tripStarted);
+          } else if (trip.arrived == true) {
+            mapProvider.changeMapAction(MapAction.driverArrived);
+          } else if (trip.accepted == true) {
+            mapProvider.changeMapAction(MapAction.driverArriving);
+          } else {
+            mapProvider.changeMapAction(MapAction.searchDriver);
+          }
+        }
         
         final bool showSelectionUI = mapProvider.mapAction == MapAction.selectTrip && 
                                    userProvider.activeBooking == null;
@@ -219,19 +238,26 @@ class _MapScreenState extends State<MapScreen> with AutomaticKeepAliveClientMixi
     if (userProvider.activeBooking != null) {
       print('📦 Active booking found:');
       print('   - ID: ${userProvider.activeBooking?.id}');
-      print('   - Status: accepted=${userProvider.activeBooking?.accepted}, started=${userProvider.activeBooking?.started}');
       
-      if (userProvider.activeBooking!.accepted == true) {
-        if (userProvider.activeBooking!.started == true) {
+      final trip = userProvider.activeBooking!;
+      if (_mapProvider?.ongoingTrip == null) {
+        _mapProvider?.setOngoingTrip(trip);
+        _mapProvider?.startListeningToTrip();
+        
+        // Add state transitions based on trip status
+        if (trip.tripCompleted == true) {
+          _mapProvider?.changeMapAction(MapAction.feedbackPage);
+        } else if (trip.reachedFinalDestination == true) {
+          _mapProvider?.changeMapAction(MapAction.reachedFinalDestination);
+        } else if (trip.started == true) {
           _mapProvider?.changeMapAction(MapAction.tripStarted);
-        } else {
+        } else if (trip.arrived == true) {
+          _mapProvider?.changeMapAction(MapAction.driverArrived);
+        } else if (trip.accepted == true) {
           _mapProvider?.changeMapAction(MapAction.driverArriving);
+        } else {
+          _mapProvider?.changeMapAction(MapAction.searchDriver);
         }
-        if (_mapProvider?.ongoingTrip == null) {
-          _mapProvider?.setOngoingTrip(userProvider.activeBooking!);
-        }
-      } else {
-        _mapProvider?.changeMapAction(MapAction.searchDriver);
       }
     }
   }

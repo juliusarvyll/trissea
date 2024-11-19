@@ -6,6 +6,7 @@ import 'package:trissea/models/trip_model.dart';
 import 'package:trissea/providers/map_provider.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:async';
 
 import '../../services/database_service.dart';
 
@@ -19,9 +20,10 @@ class ConfirmPickup extends StatefulWidget {
 }
 
 class _ConfirmPickupState extends State<ConfirmPickup> {
-  int _selectedPassengerCount = 1;
   String? todaName;
   bool _isLoading = false;
+  String? _cachedTravelTime;
+  Timer? _debounceTimer;
 
   Future<String> calculateTravelTime(
     double originLatitude,
@@ -92,13 +94,26 @@ class _ConfirmPickupState extends State<ConfirmPickup> {
   }
 
   Future<String> getTravelTime() async {
+    // If we already have a calculation, return it
+    if (_cachedTravelTime != null) {
+      return _cachedTravelTime!;
+    }
 
-      return calculateTravelTime(
-        widget.mapProvider!.deviceLocation?.latitude ?? 0.0,
-        widget.mapProvider!.deviceLocation?.longitude ?? 0.0,
-        widget.mapProvider!.remoteLocation?.latitude ?? 0.0,
-        widget.mapProvider!.remoteLocation?.longitude ?? 0.0,
-      );
+    // Calculate travel time only once
+    _cachedTravelTime = await calculateTravelTime(
+      widget.mapProvider!.deviceLocation?.latitude ?? 0.0,
+      widget.mapProvider!.deviceLocation?.longitude ?? 0.0,
+      widget.mapProvider!.remoteLocation?.latitude ?? 0.0,
+      widget.mapProvider!.remoteLocation?.longitude ?? 0.0,
+    );
+
+    return _cachedTravelTime!;
+  }
+
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _startTrip(BuildContext context) async {
@@ -126,7 +141,7 @@ class _ConfirmPickupState extends State<ConfirmPickup> {
           cost: widget.mapProvider?.cost,
           passengerId: FirebaseAuth.instance.currentUser?.uid ?? "",
           passengerName: FirebaseAuth.instance.currentUser?.displayName ?? "",
-          passengerCount: _selectedPassengerCount,
+          passengerCount: widget.mapProvider!.selectedPassengerCount,
           feedback: 0,
         );
 
@@ -160,7 +175,7 @@ class _ConfirmPickupState extends State<ConfirmPickup> {
           cost: widget.mapProvider?.cost,
           passengerId: FirebaseAuth.instance.currentUser?.uid ?? "",
           passengerName: FirebaseAuth.instance.currentUser?.displayName ?? "",
-          passengerCount: _selectedPassengerCount,
+          passengerCount: widget.mapProvider!.selectedPassengerCount,
         );
 
         String tripId = await dbService.startTrip(newTrip);
@@ -260,18 +275,21 @@ Widget build(BuildContext context) {
                           ],
                         ),
                       if (widget.mapProvider!.cost != null)
-                        Row(
-                          children: [
-                            const Icon(Icons.money),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Trip will cost: P${widget.mapProvider!.cost!.toStringAsFixed(2)}',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                color: Colors.black,
+                        ListenableBuilder(
+                          listenable: widget.mapProvider!,
+                          builder: (context, _) => Row(
+                            children: [
+                              const Icon(Icons.money),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Trip will cost: P${widget.mapProvider!.cost!.toStringAsFixed(2)}',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.black,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       FutureBuilder<String>(
                         future: getTravelTime(),
@@ -332,18 +350,16 @@ Widget build(BuildContext context) {
                 const Icon(Icons.person),
                 const SizedBox(width: 8),
                 DropdownButton<int>(
-                  value: _selectedPassengerCount,
+                  value: widget.mapProvider!.selectedPassengerCount,
                   items: List.generate(5, (index) {
                     return DropdownMenuItem<int>(
                       value: index + 1,
-                      child: Text('${index + 1} Passenger'),
+                      child: Text('${index + 1} Passenger${index > 0 ? 's' : ''}'),
                     );
                   }),
                   onChanged: (value) {
                     if (value != null) {
-                      setState(() {
-                        _selectedPassengerCount = value;
-                      });
+                      widget.mapProvider!.setSelectedPassengerCount(value);
                     }
                   },
                 ),

@@ -17,7 +17,7 @@ class ReachedDestination extends StatelessWidget {
     );
 
     return Visibility(
-      visible: mapProvider.mapAction == MapAction.reachedDestination,
+      visible: mapProvider.mapAction == MapAction.reachedFinalDestination,
       child: Positioned(
         bottom: 15,
         left: 15,
