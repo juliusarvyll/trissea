@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:trissea/models/map_action.dart';
+import 'package:trissea/models/trip_model.dart';
 import 'package:trissea/providers/map_provider.dart';
 import 'package:trissea/widgets/custom_side_drawer.dart';
 import 'package:trissea/widgets/map_screen_widgets/floating_drawer_bar_button.dart';
@@ -91,30 +92,15 @@ class _MapScreenState extends State<MapScreen> with AutomaticKeepAliveClientMixi
         print('🎯 Current MapAction: ${mapProvider.mapAction}');
         print('📦 Active Booking: ${userProvider.activeBooking != null}');
         
-        if (userProvider.activeBooking != null) {
-          final trip = userProvider.activeBooking!;
-          mapProvider.setOngoingTrip(trip);
-          mapProvider.startListeningToTrip();
-          
-          if (trip.tripCompleted == true) {
-            mapProvider.changeMapAction(MapAction.feedbackPage);
-          } else if (trip.reachedFinalDestination == true) {
-            mapProvider.changeMapAction(MapAction.reachedFinalDestination);
-          } else if (trip.started == true) {
-            mapProvider.changeMapAction(MapAction.tripStarted);
-          } else if (trip.arrived == true) {
-            mapProvider.changeMapAction(MapAction.driverArrived);
-          } else if (trip.accepted == true) {
-            mapProvider.changeMapAction(MapAction.driverArriving);
-          } else {
-            mapProvider.changeMapAction(MapAction.searchDriver);
-          }
+        // Schedule the state updates for the next frame
+        if (userProvider.activeBooking != null && mapProvider.ongoingTrip == null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _handleActiveBooking(mapProvider, userProvider.activeBooking!);
+          });
         }
         
         final bool showSelectionUI = mapProvider.mapAction == MapAction.selectTrip && 
                                    userProvider.activeBooking == null;
-        
-        print('🎨 Show Selection UI: $showSelectionUI');
         
         return Scaffold(
           key: _scaffoldKey,
@@ -240,25 +226,49 @@ class _MapScreenState extends State<MapScreen> with AutomaticKeepAliveClientMixi
       print('   - ID: ${userProvider.activeBooking?.id}');
       
       final trip = userProvider.activeBooking!;
-      if (_mapProvider?.ongoingTrip == null) {
-        _mapProvider?.setOngoingTrip(trip);
-        _mapProvider?.startListeningToTrip();
-        
-        // Add state transitions based on trip status
-        if (trip.tripCompleted == true) {
-          _mapProvider?.changeMapAction(MapAction.feedbackPage);
-        } else if (trip.reachedFinalDestination == true) {
-          _mapProvider?.changeMapAction(MapAction.reachedFinalDestination);
-        } else if (trip.started == true) {
-          _mapProvider?.changeMapAction(MapAction.tripStarted);
-        } else if (trip.arrived == true) {
-          _mapProvider?.changeMapAction(MapAction.driverArrived);
-        } else if (trip.accepted == true) {
-          _mapProvider?.changeMapAction(MapAction.driverArriving);
-        } else {
-          _mapProvider?.changeMapAction(MapAction.searchDriver);
-        }
+      _mapProvider?.setOngoingTrip(trip);
+      _mapProvider?.startListeningToTrip();
+      
+      // Update map action based on trip status
+      if (trip.tripCompleted == true) {
+        _mapProvider?.triggerFeedback();
+      } else if (trip.reachedFinalDestination == true) {
+        _mapProvider?.changeMapAction(MapAction.reachedFinalDestination);
+      } else if (trip.started == true) {
+        _mapProvider?.changeMapAction(MapAction.tripStarted);
+      } else if (trip.arrived == true) {
+        _mapProvider?.changeMapAction(MapAction.driverArrived);
+      } else if (trip.accepted == true) {
+        _mapProvider?.changeMapAction(MapAction.driverArriving);
+        _mapProvider?.startListeningToDriver();  // Start listening to driver updates
+      } else {
+        _mapProvider?.changeMapAction(MapAction.searchDriver);
       }
+
+      // Force a rebuild to reflect the new state
+      if (mounted) {
+        setState(() {});
+      }
+    }
+  }
+
+  // Add this method to handle active booking updates
+  void _handleActiveBooking(MapProvider mapProvider, Trip trip) {
+    mapProvider.setOngoingTrip(trip);
+    mapProvider.startListeningToTrip();
+    
+    if (trip.tripCompleted == true) {
+      mapProvider.changeMapAction(MapAction.feedbackPage);
+    } else if (trip.reachedFinalDestination == true) {
+      mapProvider.changeMapAction(MapAction.reachedFinalDestination);
+    } else if (trip.started == true) {
+      mapProvider.changeMapAction(MapAction.tripStarted);
+    } else if (trip.arrived == true) {
+      mapProvider.changeMapAction(MapAction.driverArrived);
+    } else if (trip.accepted == true) {
+      mapProvider.changeMapAction(MapAction.driverArriving);
+    } else {
+      mapProvider.changeMapAction(MapAction.searchDriver);
     }
   }
 }

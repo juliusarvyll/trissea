@@ -561,6 +561,7 @@ class MapProvider with ChangeNotifier {
 
   void resetMapAction() {
     _mapAction = MapAction.selectTrip;
+    _ongoingTrip = null;
   }
 
   void changeMapAction(MapAction newAction) {
